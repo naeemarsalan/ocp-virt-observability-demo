@@ -1,0 +1,39 @@
+# Step 1 -- OpenShift Virtualization (kubevirt-hyperconverged), stable channel.
+# Namespace + OperatorGroup + Subscription. GA.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-cnv
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: kubevirt-hyperconverged-group
+  namespace: openshift-cnv
+spec:
+  targetNamespaces:
+    - openshift-cnv
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: kubevirt-hyperconverged
+  namespace: openshift-cnv
+spec:
+  channel: stable
+  name: kubevirt-hyperconverged
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic
+  # startingCSV intentionally omitted here (Automatic + stable tracks latest
+  # 4.20.z). See 09-upgrade-beat.yaml for the SECOND, version-pinned
+  # subscription used for the live-upgrade beat.
+---
+apiVersion: hco.kubevirt.io/v1beta1
+kind: HyperConverged
+metadata:
+  name: kubevirt-hyperconverged
+  namespace: openshift-cnv
+spec: {}
+  # Default spec is enough for a demo. workloadUpdateStrategy is added
+  # separately in 09-upgrade-beat.yaml so it's easy to point at for that beat.

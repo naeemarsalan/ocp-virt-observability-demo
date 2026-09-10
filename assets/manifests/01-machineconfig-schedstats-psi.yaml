@@ -1,0 +1,39 @@
+# Step 2 -- kernel args needed by two specific panels. APPLY EARLY: both
+# MachineConfigs trigger a rolling reboot of every node matching the pool
+# selector. Do this well before the demo, never live.
+#
+#   schedstats=enable -> required for kubevirt_vmi_vcpu_wait_seconds_total and
+#     kubevirt_vmi_vcpu_delay_seconds_total (the "vCPU Wait" Top Consumers
+#     card). Valid and documented on OCP 4.20.
+#
+#   psi=1 -> Pressure Stall Information (/proc/pressure/cpu,memory,io).
+#     Red Hat's own documentation (developers.redhat.com, 2026-03-18) states
+#     PSI is available STARTING OCP 4.21. On the pinned 4.20 target this
+#     MachineConfig is a no-op: the kernel arg is accepted but
+#     /proc/pressure/* will not appear. Apply it anyway ONLY if you are
+#     demoing against a 4.21+ cluster; otherwise drop PSI panels from the
+#     demo entirely rather than show a blank one you can't explain.
+#
+# Only apply to the pool that runs your VM workloads -- "worker" here; use a
+# custom MachineConfigPool if VMs are pinned to a labeled subset of nodes.
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  name: 99-worker-schedstats-enable
+  labels:
+    machineconfiguration.openshift.io/role: worker
+spec:
+  kernelArguments:
+    - schedstats=enable
+---
+# OCP 4.21+ ONLY -- see note above. Do not apply on a 4.20 cluster and expect
+# PSI panels to populate; they will not.
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  name: 99-worker-psi-enable
+  labels:
+    machineconfiguration.openshift.io/role: worker
+spec:
+  kernelArguments:
+    - psi=1

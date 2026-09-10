@@ -1,0 +1,84 @@
+# Step 7 (OPTIONAL) -- Tempo + OpenTelemetry operators, TempoStack.
+# Only needed if the demo includes the "trace" domain in the Troubleshooting
+# Panel graph. Tracing UI is GA in COO 1.2+; Tempo itself is GA (3.0+).
+# There is no first-class KubeVirt trace source out of the box -- this beat
+# is realistically about tracing an app *running on* a VM or in a pod next
+# to it, not the VM's own hypervisor telemetry. Treat as optional per the brief.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-tempo-operator
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: tempo-operator-group
+  namespace: openshift-tempo-operator
+spec: {}
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: tempo-product
+  namespace: openshift-tempo-operator
+spec:
+  channel: stable
+  name: tempo-product
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic
+---
+# Package name below is the conventional Red Hat build of OpenTelemetry
+# operator name; CONFIRM against `oc get packagemanifest -n openshift-marketplace
+# | grep -i opentelemetry` on the target cluster before applying -- naming has
+# shifted across releases and this is the one field in this file not directly
+# re-verified against a live catalog.
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: opentelemetry-product
+  namespace: openshift-tempo-operator
+spec:
+  channel: stable
+  name: opentelemetry-product
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tracing-demo
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tempostack-s3
+  namespace: tracing-demo
+stringData:
+  bucketnames: <bucket-name>
+  endpoint: <s3-endpoint-url>
+  access_key_id: <access-key>
+  access_key_secret: <secret-key>
+type: Opaque
+---
+apiVersion: tempo.grafana.com/v1alpha1
+kind: TempoStack
+metadata:
+  name: demo-tempo
+  namespace: tracing-demo
+spec:
+  storage:
+    secret:
+      name: tempostack-s3
+      type: s3
+  storageSize: 10Gi
+  resources:
+    total:
+      limits:
+        memory: 2Gi
+        cpu: "2"
+  template:
+    queryFrontend:
+      jaegerQuery:
+        enabled: true

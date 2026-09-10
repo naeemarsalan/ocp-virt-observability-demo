@@ -1,0 +1,538 @@
+# =============================================================================
+# ACT 1 -- "One VM, side by side" -- Perses dashboard for Cluster Observability
+# Operator (COO) 1.5+ (Perses GA).
+#
+# SCHEMA PROVENANCE / HONEST CAVEAT:
+#   This file was hand-assembled from the public Perses dashboard API reference
+#   (https://perses.dev/perses/docs/api/dashboard/) plus COO's documented
+#   PersesDashboard CRD wrapping convention (spec.config.* mirrors the native
+#   Perses Dashboard spec: display, variables, panels, layouts, duration,
+#   refreshInterval). Red Hat's own COO articles do not publish a complete
+#   end-to-end PersesDashboard YAML as of this writing, so treat the exact
+#   field names below as a strong starting draft, NOT a copy-pasted verified
+#   sample. BEFORE the live demo:
+#     oc apply --dry-run=server -f act1-perses-dashboard.yaml
+#   against the real COO 1.5+ CRD and fix any field-name drift the API server
+#   reports. This is exactly the kind of thing the preflight script
+#   (preflight.sh) is there to catch.
+#
+# NAMESPACE SCOPE (important, and easy to get wrong):
+#   PersesDashboard is a NAMESPACE-SCOPED CRD. The operator syncs it into the
+#   Perses "project" that maps 1:1 to that Kubernetes namespace. It must live
+#   in the SAME namespace as the PersesDatasource (or reference a
+#   PersesGlobalDatasource, which is cluster-scoped) it points at, and that is
+#   usually NOT openshift-monitoring -- it is whatever namespace your COO
+#   UIPlugin / PersesDatasource was actually installed into. Pin the real
+#   namespace in the preflight step; "virt-observability-demo" below is a
+#   placeholder.
+#
+# METRIC NAMES verified against kubevirt.io/monitoring/metrics.html and
+# github.com/kubevirt/monitoring/blob/main/docs/metrics.md, 2026-09-08 --
+# same set as act1-grafana-dashboard.json. See that file's panel descriptions
+# for the full prerequisite / GAP-vs-VMware notes; this file keeps a shorter
+# comment per panel to stay readable as YAML.
+# =============================================================================
+apiVersion: perses.dev/v1alpha2
+kind: PersesDashboard
+metadata:
+  name: act1-vm-depth
+  namespace: virt-observability-demo   # PIN IN PREFLIGHT -- must match your PersesDatasource's namespace
+  labels:
+    app.kubernetes.io/part-of: ocp-virt-vs-vmware-demo
+spec:
+  config:
+    display:
+      name: "Act 1 -- One VM, Side by Side"
+      description: >-
+        OCP Virt vs VMware observability demo, Act 1: depth on a single VM.
+        Targets OpenShift 4.20 / OpenShift Virtualization 4.20 / COO 1.5+.
+    duration: 1h
+    refreshInterval: 30s
+
+    # ---------------------------------------------------------------------
+    # Datasource -- Perses does not (as publicly documented) support a
+    # Grafana-style cross-panel datasource *template variable*; instead a
+    # dashboard declares its datasource(s) here and panels resolve against
+    # the default. We still expose a `datasource` variable for operator
+    # convenience / documentation parity with the Grafana version, but the
+    # functional datasource selection is this block. Point directUrl (or
+    # switch to a `kind: PersesGlobalDatasource` reference) at whatever your
+    # COO install actually calls its Thanos-querier proxy -- pin in preflight.
+    # ---------------------------------------------------------------------
+    datasources:
+      thanosDatasource:
+        default: true
+        display:
+          name: "Thanos / cluster Prometheus"
+        plugin:
+          kind: PrometheusDatasource
+          spec:
+            directUrl: /api/proxy/plugin/monitoring-plugin/backend   # PIN IN PREFLIGHT
+
+    variables:
+      - kind: TextVariable
+        spec:
+          name: datasource
+          display:
+            name: "Data source (label only -- see datasources block above)"
+          value: thanosDatasource
+
+      - kind: ListVariable
+        spec:
+          name: namespace
+          display:
+            name: Namespace
+          allowMultiple: false
+          plugin:
+            kind: PrometheusLabelValuesVariable
+            spec:
+              labelName: namespace
+              matchers:
+                - 'kubevirt_vmi_info'
+
+      - kind: ListVariable
+        spec:
+          name: vm
+          display:
+            name: VM
+          allowMultiple: false
+          plugin:
+            kind: PrometheusLabelValuesVariable
+            spec:
+              labelName: name
+              matchers:
+                - 'kubevirt_vmi_info{namespace="$namespace"}'
+
+    # ---------------------------------------------------------------------
+    # Panels -- a representative subset of the Grafana Act 1 panel set,
+    # covering every category the customer walkthrough needs: series-count
+    # comparison, standard CPU/mem/net/storage parity, no-VMware-equivalent
+    # signals, live migration, and one "slice by arbitrary label" example.
+    # Add the remainder from act1-grafana-dashboard.json following the same
+    # pattern if the demo needs full parity with the Grafana build.
+    # ---------------------------------------------------------------------
+    panels:
+
+      seriesCountVmi:
+        kind: Panel
+        spec:
+          display:
+            name: "kubevirt_vmi_* series for this VM"
+            description: >-
+              Distinct time series, not metric names. vCenter's counter set is
+              fixed per statistics level (1-4), not per-VM -- the honest claim
+              is joinability, not raw count. See dashboard description.
+          plugin:
+            kind: StatChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: thanosDatasource
+                    query: 'count({namespace="$namespace", name="$vm", __name__=~"kubevirt_vmi_.*"})'
+
+      seriesCountJoined:
+        kind: Panel
+        spec:
+          display:
+            name: "+ virt-launcher pod series (container_*, kube_pod_*)"
+            description: >-
+              Joins on the virt-launcher pod's kube-state-metrics label
+              vm.kubevirt.io/name=<vm> -- a real label, not an ownerReference,
+              which is exactly why Korrel8r ships a KubeVirt-specific
+              VmiToPod rule instead of relying on the generic owner-follow rule.
+          plugin:
+            kind: StatChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: thanosDatasource
+                    query: >-
+                      (count({namespace="$namespace", name="$vm",
+                      __name__=~"kubevirt_(vmi|vm)_.*"}) or vector(0))
+                      + (count({namespace="$namespace",
+                      __name__=~"container_.*|kube_pod_.*"} * on(namespace,pod)
+                      group_left() (kube_pod_labels{namespace="$namespace",
+                      label_vm_kubevirt_io_name="$vm"} * 0 + 1)) or vector(0))
+
+      cpuUsage:
+        kind: Panel
+        spec:
+          display:
+            name: "vCPU usage (all modes)"
+            description: "No prerequisite. Standard CPU parity with vCenter."
+          plugin:
+            kind: TimeSeriesChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource:
+                      kind: PrometheusDatasource
+                      name: thanosDatasource
+                    query: >-
+                      sum(rate(kubevirt_vmi_cpu_usage_seconds_total{namespace="$namespace",
+                      name="$vm"}[$__rate_interval]))
+
+      memoryAvailableUsable:
+        kind: Panel
+        spec:
+          display:
+            name: "Memory available vs usable (balloon-adjusted)"
+            description: >-
+              No prerequisite. PARTIAL vs Aria (Consumed/Balloon%/Guest
+              Free/Needed) -- different model, no 1:1 mapping.
+          plugin:
+            kind: TimeSeriesChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource: {kind: PrometheusDatasource, name: thanosDatasource}
+                    query: 'kubevirt_vmi_memory_available_bytes{namespace="$namespace", name="$vm"}'
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource: {kind: PrometheusDatasource, name: thanosDatasource}
+                    query: 'kubevirt_vmi_memory_usable_bytes{namespace="$namespace", name="$vm"}'
+
+      phaseTransitionHistogram:
+        kind: Panel
+        spec:
+          display:
+            name: "Phase-transition latency p95 (creation -> phase)"
+            description: >-
+              GAP vs VMware: vCenter has raw Get-VIEvent timestamps only, no
+              distribution. Native histogram, no prerequisite.
+          plugin:
+            kind: TimeSeriesChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource: {kind: PrometheusDatasource, name: thanosDatasource}
+                    query: >-
+                      histogram_quantile(0.95, sum by (le)
+                      (rate(kubevirt_vmi_phase_transition_time_from_creation_seconds_bucket{namespace="$namespace",
+                      name="$vm"}[$__rate_interval])))
+
+      storageFlush:
+        kind: Panel
+        spec:
+          display:
+            name: "Storage flush (fsync) rate"
+            description: >-
+              GAP vs VMware: Aria's disk set has no cache-flush counter at all.
+              No prerequisite. ⚠ storage domain-stats collection is skipped
+              during live migration in recent builds -- expect gaps mid-migration.
+          plugin:
+            kind: TimeSeriesChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource: {kind: PrometheusDatasource, name: thanosDatasource}
+                    query: >-
+                      sum(rate(kubevirt_vmi_storage_flush_requests_total{namespace="$namespace",
+                      name="$vm"}[$__rate_interval]))
+
+      vcpuDelayWait:
+        kind: Panel
+        spec:
+          display:
+            name: "vCPU delay + wait (scheduler contention / I/O wait)"
+            description: >-
+              REQUIRES schedstats=enable kernel arg via worker MachineConfig.
+              SILENTLY BLANK with no error if not applied. CLOSE vs Aria CPU
+              Ready % / CPU Other Wait ms.
+          plugin:
+            kind: TimeSeriesChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource: {kind: PrometheusDatasource, name: thanosDatasource}
+                    query: >-
+                      sum by (id) (rate(kubevirt_vmi_vcpu_delay_seconds_total{namespace="$namespace",
+                      name="$vm"}[$__rate_interval]))
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource: {kind: PrometheusDatasource, name: thanosDatasource}
+                    query: >-
+                      sum by (id) (rate(kubevirt_vmi_vcpu_wait_seconds_total{namespace="$namespace",
+                      name="$vm"}[$__rate_interval]))
+
+      guestOsPanic:
+        kind: Panel
+        spec:
+          display:
+            name: "guest_os_panic (24h)"
+            description: >-
+              GAP vs VMware: no native guest kernel-panic/BSOD counter.
+              Alert: VMNonRecoverableOSPanic / ClusterVMPanicDetected (verified runbooks).
+          plugin:
+            kind: StatChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource: {kind: PrometheusDatasource, name: thanosDatasource}
+                    query: 'increase(kubevirt_vmi_guest_os_panic_total{namespace="$namespace", name="$vm"}[24h])'
+
+      nonEvictable:
+        kind: Panel
+        spec:
+          display:
+            name: "non_evictable"
+            description: "GAP vs VMware: no equivalent boolean gauge. Alert: VMCannotBeEvicted (verified runbook)."
+          plugin:
+            kind: StatChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource: {kind: PrometheusDatasource, name: thanosDatasource}
+                    query: 'kubevirt_vmi_non_evictable{namespace="$namespace", name="$vm"}'
+
+      guestLoad:
+        kind: Panel
+        spec:
+          display:
+            name: "Guest OS load average"
+            description: >-
+              REQUIRES qemu-guest-agent >= 10.0.0. GAP vs VMware: VMware
+              Tools never exposes load average.
+          plugin:
+            kind: TimeSeriesChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource: {kind: PrometheusDatasource, name: thanosDatasource}
+                    query: 'kubevirt_vmi_guest_load_1m{namespace="$namespace", name="$vm"}'
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource: {kind: PrometheusDatasource, name: thanosDatasource}
+                    query: 'kubevirt_vmi_guest_load_5m{namespace="$namespace", name="$vm"}'
+
+      migrationDataProcessedRemaining:
+        kind: Panel
+        spec:
+          display:
+            name: "Live migration: data processed vs remaining"
+            description: >-
+              GAP vs VMware: vSphere shows only an ephemeral % bar, nothing
+              retained after completion.
+          plugin:
+            kind: TimeSeriesChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource: {kind: PrometheusDatasource, name: thanosDatasource}
+                    query: 'kubevirt_vmi_migration_data_processed_bytes{namespace="$namespace", name="$vm"}'
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource: {kind: PrometheusDatasource, name: thanosDatasource}
+                    query: 'kubevirt_vmi_migration_data_remaining_bytes{namespace="$namespace", name="$vm"}'
+
+      migrationQueueDepth:
+        kind: Panel
+        spec:
+          display:
+            name: "Migration queue depth by phase (cluster-wide)"
+            description: "GAP vs VMware: Aria counts completed vMotions per host; no live queue."
+          plugin:
+            kind: TimeSeriesChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource: {kind: PrometheusDatasource, name: thanosDatasource}
+                    query: 'kubevirt_vmi_migrations_in_pending_phase'
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource: {kind: PrometheusDatasource, name: thanosDatasource}
+                    query: 'kubevirt_vmi_migrations_in_scheduling_phase'
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource: {kind: PrometheusDatasource, name: thanosDatasource}
+                    query: 'kubevirt_vmi_migrations_in_running_phase'
+
+      dirtyRateCaveat:
+        kind: Panel
+        spec:
+          display:
+            name: "⚠ Dirty-memory rate -- KNOWN BUG CNV-94992, trend only"
+            description: >-
+              Off by 2-3 orders of magnitude vs ground truth per open bug
+              CNV-94992. Show as a directional trend only; never quote an
+              absolute number live.
+          plugin:
+            kind: TimeSeriesChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource: {kind: PrometheusDatasource, name: thanosDatasource}
+                    query: 'kubevirt_vmi_migration_dirty_memory_rate_bytes{namespace="$namespace", name="$vm"}'
+
+      sliceByNode:
+        kind: Panel
+        spec:
+          display:
+            name: "Top 5 nodes by VM vCPU usage (fleet-wide)"
+            description: >-
+              Slice by NODE, no PowerCLI needed. Verify the `node` label on
+              your build via preflight.
+          plugin:
+            kind: TimeSeriesChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource: {kind: PrometheusDatasource, name: thanosDatasource}
+                    query: 'topk(5, sum by (node) (rate(kubevirt_vmi_cpu_usage_seconds_total[$__rate_interval])))'
+
+      sliceByCustomLabel:
+        kind: Panel
+        spec:
+          display:
+            name: "CPU usage grouped by user-defined VM label (team)"
+            description: >-
+              Requires the label allow-listed in the kubevirt-vm-labels-config
+              ConfigMap so kubevirt_vm_labels exposes label_team. This join is
+              exactly the PowerCLI-scripting case for a vCenter admin.
+          plugin:
+            kind: TimeSeriesChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    datasource: {kind: PrometheusDatasource, name: thanosDatasource}
+                    query: >-
+                      sum by (label_team) (sum by (namespace, name)
+                      (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace="$namespace"}[$__rate_interval]))
+                      * on(namespace, name) group_left(label_team)
+                      kubevirt_vm_labels{namespace="$namespace"})
+
+    # ---------------------------------------------------------------------
+    # Layout -- 24-column grid, same convention as the Grafana build.
+    # ---------------------------------------------------------------------
+    layouts:
+      - kind: Grid
+        spec:
+          display:
+            title: "A. Depth check -- distinct series for this VM"
+            collapse: {open: true}
+          items:
+            - {x: 0, y: 0, width: 12, height: 6, content: {"$ref": "#/spec/panels/seriesCountVmi"}}
+            - {x: 12, y: 0, width: 12, height: 6, content: {"$ref": "#/spec/panels/seriesCountJoined"}}
+
+      - kind: Grid
+        spec:
+          display:
+            title: "B. Standard CPU / memory (parity ground)"
+            collapse: {open: true}
+          items:
+            - {x: 0, y: 0, width: 12, height: 8, content: {"$ref": "#/spec/panels/cpuUsage"}}
+            - {x: 12, y: 0, width: 12, height: 8, content: {"$ref": "#/spec/panels/memoryAvailableUsable"}}
+
+      - kind: Grid
+        spec:
+          display:
+            title: "C. No-VMware-equivalent signals"
+            collapse: {open: true}
+          items:
+            - {x: 0, y: 0, width: 12, height: 8, content: {"$ref": "#/spec/panels/phaseTransitionHistogram"}}
+            - {x: 12, y: 0, width: 12, height: 8, content: {"$ref": "#/spec/panels/storageFlush"}}
+            - {x: 0, y: 8, width: 12, height: 8, content: {"$ref": "#/spec/panels/vcpuDelayWait"}}
+            - {x: 12, y: 8, width: 12, height: 8, content: {"$ref": "#/spec/panels/guestLoad"}}
+            - {x: 0, y: 16, width: 8, height: 6, content: {"$ref": "#/spec/panels/guestOsPanic"}}
+            - {x: 8, y: 16, width: 8, height: 6, content: {"$ref": "#/spec/panels/nonEvictable"}}
+
+      - kind: Grid
+        spec:
+          display:
+            title: "D. Live migration beat"
+            collapse: {open: true}
+          items:
+            - {x: 0, y: 0, width: 12, height: 8, content: {"$ref": "#/spec/panels/migrationDataProcessedRemaining"}}
+            - {x: 12, y: 0, width: 12, height: 8, content: {"$ref": "#/spec/panels/migrationQueueDepth"}}
+            - {x: 0, y: 8, width: 24, height: 7, content: {"$ref": "#/spec/panels/dirtyRateCaveat"}}
+
+      - kind: Grid
+        spec:
+          display:
+            title: "E. Slice by arbitrary label, fleet-wide"
+            collapse: {open: true}
+          items:
+            - {x: 0, y: 0, width: 12, height: 8, content: {"$ref": "#/spec/panels/sliceByNode"}}
+            - {x: 12, y: 0, width: 12, height: 8, content: {"$ref": "#/spec/panels/sliceByCustomLabel"}}

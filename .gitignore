@@ -1,0 +1,11 @@
+# tokens, kubeconfigs, local env
+slac
+*.kubeconfig
+kubeconfig*
+.env
+*.token
+*.pem
+*.key
+# editor / OS noise
+.DS_Store
+*.swp

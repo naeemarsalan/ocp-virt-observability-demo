@@ -1,0 +1,13 @@
+{
+  "_comment": "Claude Code / Claude Desktop MCP config — STDIO transport. korrel8r runs as a local subprocess, reads your current `oc login` session for the k8s domain, and reaches the other domains (alert/log/metric/netflow/trace) via the routes named in korrel8r-standalone-config.yaml. Experimental upstream feature (korrel8r MCP support since v0.10.0) — not a Red Hat product integration. Source: https://github.com/korrel8r/korrel8r/blob/main/doc/content/docs/ai-agents.md",
+  "_path_note": "REPLACE <ABSOLUTE_PATH_TO_ACT3_DIR> below with the absolute path to this act3/ directory ON THE MACHINE RUNNING THE DEMO before use — MCP client launchers resolve args relative to their own working directory, not this file's location, so a relative path will fail to find korrel8r-standalone-config.yaml. Do not reuse any path from a prior scratch/build session.",
+  "mcpServers": {
+    "korrel8r": {
+      "command": "korrel8r",
+      "args": [
+        "--config", "<ABSOLUTE_PATH_TO_ACT3_DIR>/korrel8r-standalone-config.yaml",
+        "mcp"
+      ]
+    }
+  }
+}

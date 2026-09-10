@@ -1,0 +1,54 @@
+# Step 6 -- Network Observability operator + FlowCollector wired to the same
+# LokiStack from step 5. GA (since OCP 4.12). This is what makes the
+# "netflow" domain node render in the Troubleshooting Panel, and what backs
+# `oc netobserv` wire-level capture for VM traffic.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-netobserv-operator
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: netobserv-operator-group
+  namespace: openshift-netobserv-operator
+spec: {}
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: netobserv-operator
+  namespace: openshift-netobserv-operator
+spec:
+  channel: stable
+  name: netobserv-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic
+---
+# FlowCollector is cluster-scoped, singleton, conventionally named "cluster".
+apiVersion: flows.netobserv.io/v1beta2
+kind: FlowCollector
+metadata:
+  name: cluster
+spec:
+  namespace: netobserv
+  deploymentModel: Direct
+  agent:
+    type: EBPF
+    ebpf:
+      sampling: 50
+      privileged: false
+      # Enable PacketDrop/DNS/RTT features if you want the richer netobserv
+      # signals in the demo; leave off for the minimal Korrel8r-walk path.
+      features: []
+  processor:
+    logTypes: Flows
+  loki:
+    enable: true
+    mode: LokiStack
+    lokiStack:
+      name: logging-loki
+      namespace: openshift-logging
+  consolePlugin:
+    enable: true

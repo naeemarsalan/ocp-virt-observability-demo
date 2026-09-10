@@ -1,0 +1,106 @@
+# Step 9 -- demo VM. Sized deliberately small (2 vCPU / 2Gi) so the
+# vCPU-queue and memory alerts in FAILURE MODES / demo-recipes are reachable
+# in minutes with the helper scripts in cloud-init/qga-userdata.yaml, not
+# hours. evictionStrategy: LiveMigrate is set so this VM is a valid subject
+# for both the live-migration beat and (on a non-migratable disk variant,
+# see the commented block) the VMCannotBeEvicted alert beat.
+#
+# Storage: uses a DataVolume from a RHEL 9 base image via
+# containerDisk/registry import -- swap the source for whatever golden image
+# your cluster already has. The important property for the demo is RWX/
+# migratable storage (Ceph RBD, ODF, etc.) so LiveMigratable=True; see the
+# commented "non-migratable variant" for the VMCannotBeEvicted beat instead.
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: demo-vm-01
+  namespace: demo-vms
+  labels:
+    app: demo-vm-01
+spec:
+  runStrategy: Always
+  dataVolumeTemplates:
+    - metadata:
+        name: demo-vm-01-rootdisk
+      spec:
+        storage:
+          resources:
+            requests:
+              storage: 20Gi
+          storageClassName: <storage_class_name>   # PIN: RWX/migratable class
+        source:
+          registry:
+            url: "docker://registry.redhat.io/rhel9/rhel-guest-image:latest"
+  template:
+    metadata:
+      labels:
+        app: demo-vm-01
+    spec:
+      evictionStrategy: LiveMigrate
+      domain:
+        cpu:
+          cores: 2
+        resources:
+          requests:
+            memory: 2Gi
+          limits:
+            memory: 2Gi     # memory limit == request: no headroom at the pod
+                             # level, deliberately, so a guest-side memory hog
+                             # (see cloud-init helper scripts) drives guest
+                             # headroom_ratio down without needing to also
+                             # fight the container scheduler.
+        devices:
+          disks:
+            - name: rootdisk
+              disk:
+                bus: virtio
+            - name: cloudinitdisk
+              disk:
+                bus: virtio
+          interfaces:
+            - name: default
+              masquerade: {}
+      networks:
+        - name: default
+          pod: {}
+      volumes:
+        - name: rootdisk
+          dataVolume:
+            name: demo-vm-01-rootdisk
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            userData: |
+              # PASTE the contents of cloud-init/qga-userdata.yaml here, or
+              # reference it via a Secret + cloudInitNoCloud.userDataSecretRef
+              # if you'd rather not inline it in the VM spec.
+---
+# NON-MIGRATABLE VARIANT (for the VMCannotBeEvicted beat only -- don't run
+# this alongside the main demo VM as your "everything works" example). Attach
+# a local/hostpath-backed disk with no live-migration support while
+# evictionStrategy stays LiveMigrate. KubeVirt will set
+# status.conditions[type=LiveMigratable].status=False with a reason (check it
+# via preflight), and kubevirt_vmi_non_evictable=1 for this VMI, which is
+# exactly what the VMCannotBeEvicted alert expr joins against
+# (kubevirt_vmi_non_evictable * kubevirt_vmi_info{phase="running"}). For:1m,
+# severity=warning, so this fires fast once the condition is true -- good
+# demo beat, no long wait.
+# apiVersion: kubevirt.io/v1
+# kind: VirtualMachine
+# metadata:
+#   name: demo-vm-nonmigratable
+#   namespace: demo-vms
+# spec:
+#   evictionStrategy: LiveMigrate
+#   template:
+#     spec:
+#       domain:
+#         devices:
+#           disks:
+#             - name: rootdisk
+#               disk: {bus: virtio}
+#       volumes:
+#         - name: rootdisk
+#           hostDisk:
+#             path: /var/demo/nonmigratable.img
+#             capacity: 10Gi
+#             type: DiskOrCreate

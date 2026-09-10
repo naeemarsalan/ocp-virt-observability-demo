@@ -1,0 +1,13 @@
+{
+  "_comment": "Claude Code / Claude Desktop MCP config — Streamable HTTP transport, against the COO-deployed korrel8r Service inside the cluster (same in-cluster rule set the console Troubleshooting Panel uses, exposed via `oc port-forward` or a reencrypt Route). Run preflight.sh first — it resolves <KORREL8R_URL> and writes the real values into resolved.env; do not hand-guess the port. Experimental upstream feature (MCP support since korrel8r v0.10.0) — not a Red Hat product integration. Source: https://github.com/korrel8r/korrel8r/blob/main/doc/content/docs/ai-agents.md",
+  "mcpServers": {
+    "korrel8r": {
+      "type": "streamable-http",
+      "url": "<KORREL8R_URL>/mcp",
+      "headers": {
+        "Authorization": "Bearer <OC_WHOAMI_T_TOKEN>"
+      }
+    }
+  },
+  "_auth_note": "The bearer token MUST belong to the same OpenShift user as whoever is looking at the console (ai-agents.md: 'the console and agent must authenticate as the same user to share a session'). Populate <OC_WHOAMI_T_TOKEN> from `oc whoami -t` for that user immediately before the demo — tokens expire. Populate <KORREL8R_URL> from preflight.sh's resolved.env (either the port-forward URL, e.g. https://localhost:8443, or the Route host)."
+}

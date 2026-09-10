@@ -1,0 +1,104 @@
+# Step 5 -- OpenShift Logging 6.x + Loki Operator + LokiStack.
+# Two operators, one CR. GA. VM logs (virt-launcher/virt-handler/console) land
+# here the same way pod logs do -- this is what makes the "log" domain node
+# in the Troubleshooting Panel render, and it's a hard prerequisite: without
+# it the log node is not degraded, it is simply absent from the graph, with
+# no error shown.
+#
+# NOTE ON CHANNEL: OpenShift Logging uses per-minor channels, "stable-6.<y>".
+# Pin the exact <y> your target OCP 4.20 build ships against -- confirm with
+# `oc get packagemanifest cluster-logging -o jsonpath='{.status.channels[*].name}'`
+# before applying; do not guess it from this file.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-logging
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-operators-redhat
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: openshift-logging-group
+  namespace: openshift-logging
+spec:
+  targetNamespaces:
+    - openshift-logging
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: openshift-operators-redhat-group
+  namespace: openshift-operators-redhat
+spec: {}
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: loki-operator
+  namespace: openshift-operators-redhat
+spec:
+  channel: stable-6.y    # PIN: replace 6.y with the confirmed channel, see NOTE above
+  name: loki-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: cluster-logging
+  namespace: openshift-logging
+spec:
+  channel: stable-6.y    # PIN: same as above, must match
+  name: cluster-logging
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic
+---
+# Object storage secret -- fill in for your backend (S3/ODF NooBaa/etc).
+# This is the ODF/NooBaa-shaped example; swap keys for AWS S3/Azure/GCS as needed.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: logging-loki-s3
+  namespace: openshift-logging
+stringData:
+  bucketnames: <bucket-name>
+  endpoint: <s3-endpoint-url>
+  access_key_id: <access-key>
+  access_key_secret: <secret-key>
+  region: <region-or-blank-for-noobaa>
+type: Opaque
+---
+apiVersion: loki.grafana.com/v1
+kind: LokiStack
+metadata:
+  name: logging-loki
+  namespace: openshift-logging
+spec:
+  managementState: Managed
+  # Demo sizing: 1x.extra-small is the recommended demo default (production-
+  # supported since Logging 5.8+, carried forward into 6.x; right-sized for
+  # low VM log volume). 1x.small is the next step up if you're also running
+  # the Network Observability netflow-to-Loki path at meaningful volume.
+  # Do NOT use 1x.pico for this demo -- see FAILURE MODES: it's the smallest
+  # supported size but ships with the same HA/replication-factor-2 defaults
+  # as the larger sizes, so it over-provisions relative to what a handful of
+  # demo VMs actually produce (a real reported cost complaint, not a
+  # hypothetical one).
+  size: 1x.extra-small
+  storage:
+    schemaVersion: v13
+    secret:
+      name: logging-loki-s3
+      type: s3          # change to the type matching your Secret above
+  storageClassName: <storage_class_name>   # PIN: a real StorageClass on this cluster
+  tenants:
+    mode: openshift-logging
+  # Loki VM/pod log retention is ~30 days by design in this configuration.
+  # If the demo narrative needs longer retention, forward externally --
+  # do not promise long-horizon log retention out of this LokiStack as-is.

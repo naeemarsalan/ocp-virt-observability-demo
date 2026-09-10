@@ -1,0 +1,56 @@
+# Step 8 -- UIPlugin CRs. All four live as cluster-scoped-ish resources
+# managed by COO; apply after COO, LokiStack, FlowCollector (and TempoStack,
+# if used) are already up, since each plugin references those by name.
+#
+# type values used below (Logging, TroubleshootingPanel, DistributedTracing,
+# Monitoring) are the only four supported by this COO build -- do not invent
+# others.
+
+# --- Logging UI plugin: backs the Observe > Logs / VM console-log views and
+#     the "log" domain in the Troubleshooting Panel. Requires the LokiStack
+#     from step 5 to already exist.
+apiVersion: observability.openshift.io/v1alpha1
+kind: UIPlugin
+metadata:
+  name: logging
+spec:
+  type: Logging
+  logging:
+    lokiStack:
+      name: logging-loki
+    logsLimit: 50
+    timeout: 30s
+---
+# --- Troubleshooting Panel: the Korrel8r-powered side panel. GA in COO 1.3,
+#     OCP 4.19+ -- NOT supported on 4.17. Installing this plugin is what
+#     triggers COO to deploy the korrel8r Deployment/Service automatically.
+apiVersion: observability.openshift.io/v1alpha1
+kind: UIPlugin
+metadata:
+  name: troubleshooting-panel
+spec:
+  type: TroubleshootingPanel
+---
+# --- Distributed Tracing UI plugin: OPTIONAL, only if step 7 (Tempo) is in
+#     scope for this demo. Backs the "trace" domain node.
+apiVersion: observability.openshift.io/v1alpha1
+kind: UIPlugin
+metadata:
+  name: distributed-tracing
+spec:
+  type: DistributedTracing
+---
+# --- Monitoring UI plugin with Perses dashboards enabled: GA in COO 1.5.
+#     This is the customizable-dashboards surface (Perses), separate from the
+#     Troubleshooting Panel. Perses dashboards in this build are
+#     single-namespace scoped -- do not promise a cross-namespace fleet view
+#     from this plugin alone; that's the RHACM dashboards' job, not this one's.
+apiVersion: observability.openshift.io/v1alpha1
+kind: UIPlugin
+metadata:
+  name: monitoring
+spec:
+  type: Monitoring
+  monitoring:
+    perses:
+      enabled: true

@@ -1,0 +1,68 @@
+# Standalone korrel8r config for the STDIO MCP transport (mcp-config-stdio.json).
+# This is the upstream "outside-the-cluster" template, unmodified except for this header —
+# it queries each store through its OpenShift Route rather than in-cluster Service DNS,
+# because a subprocess on your laptop has no in-cluster network access.
+# Upstream source (fetch fresh before the demo — do not assume this copy is current):
+#   https://raw.githubusercontent.com/korrel8r/korrel8r/main/etc/korrel8r/openshift-route.yaml
+#
+# Contrast: the file the COO-deployed korrel8r pod actually runs on-cluster is the
+# Service-DNS variant (openshift-svc.yaml upstream) — that is the "in-cluster korrel8r
+# config" referenced in the setup doc; you don't need a local copy of it, but preflight.sh
+# pulls the live ConfigMap so you can diff the two and see they express the same rule set
+# against different store endpoints.
+#
+# PREFLIGHT REQUIRED: run preflight.sh once against the live cluster to confirm the routes
+# below actually exist (thanos-querier, alertmanager-main, logging-loki, netobserv/loki,
+# tempo) before using this file — a route that 404s just makes that one domain silently
+# return no results, it will not error out loudly.
+
+stores:
+  - domain: k8s
+
+  # Alert store in openshift-monitoring (Prometheus/Alertmanager) + LokiRuler alerts
+  - domain: alert
+    metrics: 'https://{{k8sRouteHost "openshift-monitoring" "thanos-querier"}}'
+    alertmanager: 'https://{{k8sRouteHost "openshift-monitoring" "alertmanager-main"}}'
+    lokiRuler: 'https://{{k8sRouteHost "openshift-logging" "logging-loki"}}'
+
+  # Requires: OpenShift Logging 6.x + LokiStack (GA). Loki app logs retained ~30 days by
+  # default — this is a demo-day constraint, not a config bug (see report Section 3.2.10).
+  - domain: log
+    lokiStack: 'https://{{k8sRouteHost "openshift-logging" "logging-loki"}}'
+    direct: true
+
+  - domain: metric
+    metric: 'https://{{k8sRouteHost "openshift-monitoring" "thanos-querier"}}'
+
+  # Requires: Network Observability operator (GA) + FlowCollector with lokiStorage enabled.
+  # Without it installed, this route lookup fails and netflow:network queries return nothing
+  # — matches the report's "log and netflow nodes silently do not render" caveat.
+  - domain: netflow
+    lokiStack: 'https://{{k8sRouteHost "netobserv" "loki"}}'
+
+  # Optional for this demo; only needed if you also want the trace domain (Tempo GA,
+  # Tracing UI GA in COO 1.2, Tempo 3.0+). Leave in place — korrel8r just returns 0 results
+  # for trace:* queries if TempoStack isn't installed, it does not fail the whole config.
+  - domain: trace
+    tempoStack: 'https://{{k8sRouteHost "openshift-tracing" "tempo-platform-gateway"}}/api/traces/v1/platform/tempo'
+
+include:
+  - rules/all.yaml   # NOTE: upstream's rules/all.yaml is now an empty placeholder file —
+                      # "all rules previously in YAML are now compiled into the binary."
+                      # The KubeVirt-specific rules (VmToVmi, VmiToPod, VmiToAlert,
+                      # AlertToVMI, AlertToVM, VmiToMetric, VmiToLogs, ...) come from the
+                      # compiled quickrules (pkg/rules/quickrules/kubevirt.qtpl) as of
+                      # v0.12.1, not from this include line — verify with
+                      # `korrel8r --config <this file> rules --start k8s:VirtualMachineInstance.kubevirt.io --long`
+                      # (there is no `korrel8r get` subcommand; see preflight.sh) that your
+                      # binary/image is new enough to have them.
+                      # CAVEAT: the compiled netflow rules (pkg/rules/quickrules/netflow.qtpl)
+                      # only go netflow -> k8s (NetflowToSrcK8s/NetflowToDstK8s). There is
+                      # currently NO compiled k8s -> netflow rule (a "K8sSrcToNetflow" name
+                      # exists only in an upstream _samples file marked superseded/legacy).
+                      # Do not assume a Pod-to-netflow graph hop exists — confirm with
+                      # `korrel8r rules --start k8s:Pod --goal netflow:network --long` first.
+
+tuning:
+  requestTimeout: 1m
+  sessionTimeout: 5m

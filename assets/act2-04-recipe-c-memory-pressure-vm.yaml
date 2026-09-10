@@ -1,0 +1,122 @@
+# =============================================================================
+# act2-04-recipe-c-memory-pressure-vm.yaml
+#
+# Trigger recipe (c): guest memory pressure.
+# Fires: KubeVirtVMGuestMemoryPressure (severity: warning, for: 5m)
+#
+# *** NAME CORRECTION ***
+# The brief for this recipe assumed an alert called "KubevirtVmHighMemoryUsage".
+# No such alert exists. Verified against kubevirt/kubevirt @
+# pkg/monitoring/rules/alerts/vms.go, the KubeVirt runbook index
+# (github.com/kubevirt/monitoring/tree/main/docs/runbooks), and
+# kubevirt.io/monitoring/runbooks/ -- the two real guest-memory alerts are:
+#
+#   KubeVirtVMGuestMemoryPressure     severity: warning   for: 5m   <- used here
+#   KubeVirtVMGuestMemoryAvailableLow severity: info       for: 30m
+#
+# KubeVirtVMGuestMemoryPressure is the right one for a "run a memory hog"
+# demo: its condition explicitly requires ACTIVE major page faults or swap
+# I/O (a hog under pressure), fires in 5 minutes, and is severity warning.
+# KubeVirtVMGuestMemoryAvailableLow requires the OPPOSITE -- LOW swap/fault
+# activity (a slow leak with no swap configured) -- and needs 30 minutes;
+# it is the wrong alert to build a live demo around.
+#
+# Exact expr (verified, vms.go):
+#   ((vmi:kubevirt_vmi_memory_headroom_ratio:sum < 0.05)
+#     and (vmi:kubevirt_vmi_pgmajfaults:rate5m > 5
+#          or vmi:kubevirt_vmi_swap_traffic_bytes:rate5m > 1048576)
+#     and (vmi:kubevirt_vmi_memory_available_bytes:sum > 0))
+#   * on(name, namespace) group_left(vm) topk by(name, namespace) (1, ...)
+#
+# Recording rules used (verified, pkg/monitoring/rules/recordingrules/vmi.go):
+#   vmi:kubevirt_vmi_memory_headroom_ratio:sum =
+#       sum(kubevirt_vmi_memory_usable_bytes) / sum(kubevirt_vmi_memory_available_bytes)
+#   vmi:kubevirt_vmi_pgmajfaults:rate5m = sum(rate(kubevirt_vmi_memory_pgmajfault_total[5m]))
+#   vmi:kubevirt_vmi_swap_traffic_bytes:rate5m =
+#       sum(rate(kubevirt_vmi_memory_swap_in_traffic_bytes[5m]))
+#     + sum(rate(kubevirt_vmi_memory_swap_out_traffic_bytes[5m]))
+#
+# *** PREREQUISITE CORRECTION (hard rule 6 in the brief only listed 3 known
+# prerequisites -- QEMU guest agent, schedstats=enable, psi=1. This recipe's
+# metrics need a 4th, DIFFERENT one that isn't any of those three): ***
+#   kubevirt_vmi_memory_available_bytes / _usable_bytes / _pgmajfault_total /
+#   _swap_in_traffic_bytes / _swap_out_traffic_bytes are all sourced from the
+#   libvirt/QEMU MEMORY BALLOON DEVICE's extended stats (virtio-balloon guest
+#   kernel driver + a libvirt <stats period='...'/> poll), NOT from
+#   qemu-guest-agent. Confirmed against the metric descriptions themselves
+#   (kubevirt.io/monitoring/metrics.html): e.g. kubevirt_vmi_memory_usable_bytes
+#   = "amount of memory which can be reclaimed by balloon...". None of the
+#   guest-memory metric descriptions carry the "Requires qemu-guest-agent"
+#   note that kubevirt_vmi_guest_load_1m/5m/15m explicitly do.
+#   Requirement instead: the VM must NOT set
+#   spec.domain.devices.autoattachMemBalloon: false (it defaults to true /
+#   attached), and the guest kernel needs the virtio_balloon driver loaded
+#   (default on any stock Linux cloud image -- Fedora/CentOS Stream/RHEL all
+#   ship it). No guest agent install, no kernel arg, no MachineConfig needed
+#   for this specific recipe.
+# =============================================================================
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: vm-memory-pressure
+  namespace: demo-vms          # <- match your Act 1 namespace
+  labels:
+    demo.act2/recipe: "c-memorypressure"
+spec:
+  running: true
+  template:
+    metadata:
+      labels:
+        demo.act2/recipe: "c-memorypressure"
+    spec:
+      domain:
+        cpu:
+          cores: 2
+        resources:
+          requests:
+            memory: 512Mi
+          limits:
+            memory: 512Mi        # tight ceiling: the hog will exceed usable
+                                  # headroom quickly once the guest has swap
+        devices:
+          disks:
+            - name: rootdisk
+              disk:
+                bus: virtio
+            - name: cloudinitdisk
+              disk:
+                bus: virtio
+          # autoattachMemBalloon defaults to true -- do NOT set it false here,
+          # or kubevirt_vmi_memory_usable_bytes/available_bytes stop reporting
+          # and this whole alert silently never fires (no error, just no data).
+      volumes:
+        - name: rootdisk
+          containerDisk:
+            image: quay.io/containerdisks/fedora:latest   # swap for your golden image
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            userData: |
+              #cloud-config
+              # stress-ng and an in-guest swapfile are what make pgmajfaults/
+              # swap-traffic actually move -- without guest swap configured,
+              # a hog just gets OOM-killed by the guest kernel with no
+              # sustained swap I/O, and KubeVirtVMGuestMemoryPressure's
+              # condition (which needs pgmajfaults>5/s OR swap>1MiB/s) may
+              # never trip even though the VM is clearly starved.
+              packages:
+                - stress-ng
+              runcmd:
+                - fallocate -l 256M /swapfile
+                - chmod 600 /swapfile
+                - mkswap /swapfile
+                - swapon /swapfile
+                - echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
+---
+# Apply, then wait for boot + cloud-init:
+#   oc apply -f act2-04-recipe-c-memory-pressure-vm.yaml
+#   oc wait vmi/vm-memory-pressure -n demo-vms --for=jsonpath='{.status.phase}'=Running --timeout=180s
+#   (give cloud-init another ~60-90s to install stress-ng and set up swap)
+#
+# Then run act2-05-memory-pressure-driver.sh to start the hog and watch the
+# recording rules move in real time.

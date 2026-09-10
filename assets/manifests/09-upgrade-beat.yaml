@@ -1,0 +1,64 @@
+# Step 10 -- the "second CNV version available" upgrade beat.
+#
+# Pattern: pin the FIRST install one z-stream behind "latest stable" with
+# Manual approval, run the demo VMs on it, then approve the pending
+# InstallPlan live to show the upgrade. workloadUpdateStrategy on the HCO CR
+# controls HOW existing VMIs get moved onto the new virt-launcher: LiveMigrate
+# for VMIs that support it, Evict for VMIs that don't.
+#
+# IMPORTANT, verified against Red Hat's own "Updating OpenShift Virtualization"
+# docs (consistent across 4.9-4.21): batchEvictionSize and batchEvictionInterval
+# below apply ONLY to the Evict method. They have NO effect on LiveMigrate.
+# The main demo VM (step 9) is live-migratable, so this Subscription+HCO patch
+# alone will NOT visibly pace its rollout -- see the batchEvictionSize comment
+# below and FAILURE MODES #13 for what actually controls LiveMigrate pacing
+# and how to make this beat watchable.
+#
+# CONFIRM the actual two available z-streams via:
+#   oc get packagemanifest kubevirt-hyperconverged -n openshift-marketplace \
+#     -o jsonpath='{.status.channels[?(@.name=="stable")].currentCSV}'
+# and pick a startingCSV one or two z-releases behind that.
+
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: kubevirt-hyperconverged
+  namespace: openshift-cnv
+spec:
+  channel: stable
+  name: kubevirt-hyperconverged
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Manual          # <-- changed from Automatic: hold here
+  startingCSV: kubevirt-hyperconverged-operator.v4.20.0   # PIN: confirm exact z-stream available
+---
+apiVersion: hco.kubevirt.io/v1beta1
+kind: HyperConverged
+metadata:
+  name: kubevirt-hyperconverged
+  namespace: openshift-cnv
+spec:
+  workloadUpdateStrategy:
+    workloadUpdateMethods:
+      - LiveMigrate
+      - Evict          # Evict only affects VMIs that CANNOT live-migrate.
+                        # LiveMigrate alone is the HCO default; listing both
+                        # is a documented, supported pattern for a mixed
+                        # fleet (some VMIs migratable, some not) -- not
+                        # itself "the default."
+    batchEvictionSize: 1        # Applies ONLY to the Evict path (default 10).
+                                 # Has ZERO effect on LiveMigrate -- it does
+                                 # not pace, throttle, or batch live-migrated
+                                 # VMIs at all. Kept small here so that IF the
+                                 # non-migratable demo-vm-nonmigratable variant
+                                 # (see 08-demo-vm.yaml) is included in this
+                                 # beat, its Evict-driven update is visibly
+                                 # paced one VMI at a time. For the main
+                                 # (migratable) demo VM, this field does
+                                 # nothing -- see FAILURE MODES #13 for what
+                                 # actually governs LiveMigrate pacing
+                                 # (spec.liveMigrationConfig on this same HCO
+                                 # CR: parallelMigrationsPerCluster, default 5;
+                                 # parallelOutboundMigrationsPerNode, default 2;
+                                 # bandwidthPerMigration, default unlimited).
+    batchEvictionInterval: "2m0s"   # Also Evict-only; see above.

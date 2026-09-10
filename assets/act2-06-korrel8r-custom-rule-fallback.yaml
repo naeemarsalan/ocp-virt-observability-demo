@@ -1,0 +1,119 @@
+# =============================================================================
+# act2-06-korrel8r-custom-rule-fallback.yaml
+#
+# FALLBACK ONLY -- use this if act2-01-korrel8r-verify.sh reports missing
+# rules (your COO build's pinned korrel8r image predates v0.11.4/v0.12.1).
+#
+# ============================ READ THIS FIRST ==============================
+# THIS IS AN UNSUPPORTED PATH. Say so on stage if you use it.
+#
+# Verified against rhobs/observability-operator @
+# pkg/apis/uiplugin/v1alpha1/types.go:
+#
+#   type TroubleshootingPanelConfig struct {
+#       Timeout string `json:"timeout,omitempty"`
+#       EnableAgentNavigation bool `json:"enableAgentNavigation,omitempty"`
+#   }
+#
+# That is the ENTIRE spec surface of the TroubleshootingPanel UIPlugin CR.
+# There is no rules field, no configMapRef, no extraRules -- nothing. The
+# supported product surface gives you no hook to add a custom Korrel8r rule.
+#
+# What actually generates the korrel8r config is the operator itself
+# (pkg/controllers/uiplugin/components.go: newKorrel8rConfigMap /
+# newKorrel8rDeployment), which:
+#   - renders a ConfigMap named "korrel8r" (key korrel8r.yaml) from an
+#     embedded Go template (pkg/controllers/uiplugin/config/korrel8r.yaml)
+#   - mounts it into the korrel8r Deployment at /config/korrel8r.yaml
+#   - registers both as components the operator continuously reconciles
+#     (reconciler.NewUpdater(...) in the standard controller-runtime pattern)
+#
+# That last point is why patching this ConfigMap is a demo trick, not a
+# configuration: because it is reconciled, ANY manual edit --
+# `oc edit configmap/korrel8r -n <coo-ns>`, `oc patch`, or mounting an extra
+# volume via `oc set volume` on the Deployment -- gets reverted the next time
+# the operator's control loop runs (observed cadence: seconds to a couple of
+# minutes; not configurable from the CR). It is genuinely fine to do this
+# once, live, for a demo where you understand and narrate that it will not
+# persist. It is not something to hand a customer as "how you'd do this in
+# production." The honest answer to "how do I add a permanent custom rule"
+# today is: open a support case / RFE with Red Hat, or run a second,
+# self-managed korrel8r instance outside COO's management (your own
+# Deployment + ConfigMap, your own console proxy) that layers custom rules
+# on top -- which is real effort, not a config flag.
+#
+# The YAML syntax below is not invented -- it is lifted from a real upstream
+# reference file: korrel8r/korrel8r @
+# etc/korrel8r/rules/_samples/kubevirt.yaml (a hand-written YAML rule set
+# covering the same ground as the compiled quickrules, kept in the repo as a
+# worked example of the config-file rule schema). Two rules are reproduced
+# here verbatim: AlertToVMI (the one this demo actually needs) and VmiToPod
+# (which is the one that matters most, because -- as the brief anticipated --
+# virt-launcher pods have NO ownerReference back to their VMI; they are
+# related only by label (kubevirt.io=virt-launcher,
+# vm.kubevirt.io/name=<vmi-name>), so Korrel8r's generic
+# DependentToOwner/ownerReference-following logic cannot find this edge on
+# its own -- a rule has to say so explicitly, which is exactly what this
+# does).
+# =============================================================================
+
+# --- 1. The rules to add, as a second korrel8r config file -----------------
+# (This is what you would mount at /etc/korrel8r/rules/kubevirt-fallback.yaml
+# and reference from an extra `include:` line in the korrel8r.yaml ConfigMap
+# -- both edits will be reverted on the next reconcile, per the header above.)
+
+templates: []
+
+rules:
+  - name: AlertToVMI
+    start:
+      domain: alert
+    goal:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    result:
+      query: |-
+        k8s:VirtualMachineInstance.kubevirt.io:{"namespace":"{{index .Labels "namespace" | required}}","name":"{{index .Labels "name" | required}}"}
+
+  - name: VmiToPod
+    start:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [Pod]
+    result:
+      query: |-
+        k8s:Pod:{"namespace":"{{.metadata.namespace}}","labels":{"vm.kubevirt.io/name":"{{.metadata.name}}","kubevirt.io":"virt-launcher"}}
+
+  - name: VmiToLogs
+    start:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    goal:
+      domain: log
+    result:
+      query: |-
+        log:{{logTypeForNamespace .metadata.namespace}}:{"namespace":"{{.metadata.namespace}}","labels":{"kubevirt.io":"virt-launcher","vm.kubevirt.io/name":"{{.metadata.name}}"}}
+
+# --- 2. How to apply it for a one-off, understood-to-be-temporary demo -----
+#
+#   oc create configmap korrel8r-fallback-rules -n <coo-ns> \
+#     --from-file=kubevirt-fallback.yaml=act2-06-korrel8r-custom-rule-fallback.yaml
+#
+#   oc set volume deployment/korrel8r -n <coo-ns> \
+#     --add --name=korrel8r-fallback-rules \
+#     --configmap-name=korrel8r-fallback-rules \
+#     --mount-path=/etc/korrel8r/rules/fallback/
+#
+#   oc patch configmap/korrel8r -n <coo-ns> --type=json \
+#     -p='[{"op":"add","path":"/data/korrel8r.yaml","value":"<same content as today, plus:\ninclude:\n  - /etc/korrel8r/rules/fallback/kubevirt-fallback.yaml\n"}]'
+#     # (in practice: oc edit configmap/korrel8r -n <coo-ns> and add the
+#     # include line by hand -- this is fiddly on purpose, it is not meant
+#     # to be a repeatable command)
+#
+#   oc rollout restart deployment/korrel8r -n <coo-ns>
+#
+# Re-run act2-01-korrel8r-verify.sh afterward to confirm the fallback rules
+# loaded, and expect the operator to quietly undo all of the above at some
+# point after the demo -- that is correct, expected behavior, not a bug.

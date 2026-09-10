@@ -1,0 +1,15 @@
+# Step 3 -- enable user workload monitoring. Required so that
+# ServiceMonitors/PodMonitors and PrometheusRules outside openshift-monitoring
+# (including anything the demo adds itself) are scraped/evaluated. KubeVirt's
+# own kubevirt_vmi_* metrics are exposed by virt-handler/virt-api which are
+# scraped by the PLATFORM Prometheus regardless -- this step is about making
+# the platform + user-workload split behave the way the console UIPlugins and
+# any custom recording rules expect.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-monitoring-config
+  namespace: openshift-monitoring
+data:
+  config.yaml: |
+    enableUserWorkload: true
