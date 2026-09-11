@@ -333,7 +333,7 @@
 <tr><td>Real objects behind the graph</td><td>100 virt-launcher log lines; 1 NTP flow (UDP 123, 90 bytes)</td><td>GET /api/v1alpha1/objects with the graph's own queries</td></tr>
 <tr><td>Console panel, shipped engine, VMI query typed into the editor</td><td>VMI, VM, pod, node, PVC, PV, StorageClass, DataVolume, 5 events, 248/263 metrics, 2/3 flows, 1000 log lines</td><td>Troubleshooting Panel screenshot, korrel8r 0.11.1</td></tr>
 <tr><td>Console panel, shipped engine, alert query typed into the editor</td><td>alert and 128 metrics only</td><td>same; no AlertToVMI rule in 0.11.1</td></tr>
-<tr><td>Rules in the shipped vs upstream engine</td><td>47 (4 KubeVirt) vs 104 (30 KubeVirt)</td><td>korrel8r rules, run inside each pod</td></tr>
+<tr><td>Rules in the shipped vs upstream engine</td><td>47 (4 KubeVirt) vs 104 (37 KubeVirt)</td><td>korrel8r rules, run inside each pod</td></tr>
 <tr><td>Fleet: running VMIs on an outdated virt-launcher</td><td>21 of 28</td><td>kubevirt_vmi_number_of_outdated; workloadUpdateMethods is empty</td></tr>
 <tr><td>Hand-patched rules on the operator's config</td><td>reverted in under 2 minutes; broke the panel first</td><td>ConfigMap watch, panel screenshot</td></tr>
 </table></div>
