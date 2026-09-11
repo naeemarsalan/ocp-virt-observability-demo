@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One VM, Side by Side</title>
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<header class="top"><div class="shell">
+  <a class="brand" href="index.html">OpenShift Virtualization observability demo</a>
+  <nav>
+    <a href="index.html">Overview</a>
+    <a href="act1-depth.html" aria-current="page">1 Depth</a>
+    <a href="act2-correlation.html">2 Correlation</a>
+    <a href="act2b-fleet.html">2b Fleet</a>
+    <a href="act3-agentic.html">3 Agentic</a>
+    <a href="reference-architecture.html">Reference architecture</a>
+    <a href="evidence.html">Evidence</a>
+    <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo">GitHub</a>
+  </nav>
+</div></header>
+<main class="shell">
+
+<p class="kicker">Demo 1 of 4</p>
+<h1>One VM, Side by Side</h1>
+<p class="lead">This demo counts every Prometheus series one idle VM produces, then live-migrates it and reads the transfer numbers off the same metrics store the pods already report to. The point is not a bigger number than vCenter, it is that every one of these series is joinable by ordinary PromQL against any label a pod or node already carries.</p>
+<p class="meta"><span>vm-demo, namespace demo-vms</span><span>OpenShift 4.20.32, OpenShift Virtualization 4.20.24</span><span>live run 2026-09-11</span></p>
+
+<div class="status">
+  <span class="ga">kubevirt_vmi_* / kubevirt_vm_* metrics: GA</span>
+  <span class="ga">virtctl live migration: GA</span>
+  <span class="ga">Perses dashboards (COO 1.5+): GA, namespace-scoped</span>
+</div>
+
+<h2>What this demo shows</h2>
+<p>Pick one VM nobody is doing anything interesting with, vm-demo in demo-vms, and ask three widening questions with plain PromQL: how many series does the VMI object itself expose, how many once you add the VM object's own series, and how many once you follow the pod label the virt-launcher pod carries and pull in every cAdvisor and kube-state-metrics series that comes with it. Then look at five panels that have no equivalent in vCenter or Aria at all: storage flush counters, memory available versus usable, the non_evictable gate behind the eviction alert, guest load from the in-guest agent, and the live migration data streams. Then trigger a real live migration with virtctl and watch the same counters move. Close by slicing the whole fleet, not just this one VM, by an arbitrary label with one line of PromQL, no PowerCLI script required.</p>
+<p>The honest framing matters here. vCenter and Aria expose a fixed counter set per statistics level (1 through 4); it does not grow per VM the way a label-indexed store does, so a raw side-by-side count invites a fair "so what." The defensible claim is that every one of these series is independently queryable and joinable by arbitrary label right now, with the same query language you already use on every pod and node, not that OpenShift simply has more metrics than vCenter.</p>
+
+<h2>Why it matters next to vCenter</h2>
+<p>In vCenter or Aria, joining a VM's counters against its host, datastore, and cluster context means either the built-in correlation views Aria ships, or a PowerCLI script you write and maintain yourself. Here, the virt-launcher pod is joined to its VMI only by a label, <code>vm.kubevirt.io/name</code>, not an ownerReference, and that label is enough for a plain <code>and on(namespace,pod)</code> PromQL clause to pull in every cAdvisor and kube-state-metrics series for that pod. No new tool, no script, the same Thanos-querier your cluster team already uses for everything else.</p>
+<p>Said plainly, so nobody has to guess later: vCenter and Aria still win on What-If capacity modelling, predictive DRS against forecast load, cost and chargeback reporting, and multi-year native retention. This demo does not touch any of those, and does not pretend to.</p>
+
+<h2>Before you start</h2>
+<p>Full prerequisites, install order, and every failure mode are in <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/0-prereqs-preflight-failure-modes.md">0-prereqs-preflight-failure-modes.md</a>. For this act specifically:</p>
+<ul>
+<li>vm-demo running in demo-vms, marked LiveMigratable, and <code>virtctl</code> on PATH (the fallback is a VirtualMachineInstanceMigration object created with <code>oc create</code>).</li>
+<li>qemu-guest-agent 10.0.0 or newer connected in the guest. Without it the guest load panels stay blank, not broken, just empty.</li>
+<li>The <code>kube_pod_labels</code> allow-list for <code>vm.kubevirt.io/name</code>. Confirmed present on this cluster's kube-state-metrics right now (evidence/act1-metrics/SUMMARY.md, 02b-prereq-kube-pod-labels-check.json). This is not on by default on every OpenShift cluster, check it before you promise the pod join elsewhere.</li>
+<li><code>schedstats=enable</code> active on the workers, for the vCPU delay/wait panels. On this cluster it was turned on at runtime with <code>sysctl</code>, not the documented MachineConfig, so it works today but reverts on the next node reboot.</li>
+<li>User workload monitoring enabled, so these queries can run against Thanos-querier at all.</li>
+</ul>
+
+<h2>Steps</h2>
+<ol class="steps">
+<li>Open Observe, Metrics in the console. Run the first series-count query, VMI-scoped series only.
+<pre><code>count({namespace="demo-vms", name="vm-demo", __name__=~"kubevirt_vmi_.*"})</code></pre>
+On this cluster right now that returns 61 (evidence/act1-metrics/SUMMARY.md, 01-count-vmi-only.json).
+</li>
+<li>Widen it to include VM-object-level series, the ones that exist even while the VM is stopped.
+<pre><code>count({namespace="demo-vms", name="vm-demo", __name__=~"kubevirt_(vmi|vm)_.*"})</code></pre>
+Result: 72 (02-count-vmi-plus-vm.json).
+</li>
+<li>Try the full join through the virt-launcher pod, the version with <code>group_left()</code>, exactly as originally written.
+<pre><code>count(
+  {namespace="demo-vms", __name__=~"container_.*|kube_pod_.*"}
+  * on(namespace,pod) group_left()
+  (kube_pod_labels{namespace="demo-vms", label_vm_kubevirt_io_name="vm-demo"} * 0 + 1)
+)</code></pre>
+This errors on this cluster: <code>multiple matches for labels: grouping labels must ensure unique matches</code> (03-count-full-join-via-pod.json). Two things stack here: a live migration was running at the time and left two virt-launcher pods carrying the same pod label, and separately, this Thanos build errors on any <code>__name__=~"..."</code> regex combined with <code>group_left()</code> even with a single unambiguous pod on both sides. Drop <code>group_left()</code> for a plain membership filter instead, since the panel only ever needs a count, not the multiplied values.
+<pre><code>count(
+  {namespace="demo-vms", __name__=~"container_.*|kube_pod_.*"}
+  and on(namespace,pod)
+  kube_pod_labels{namespace="demo-vms", label_vm_kubevirt_io_name="vm-demo"}
+)</code></pre>
+This runs clean and returns 345 (03f-count-full-join-WORKING-and-based-equivalent.json), the full combined total. It is inflated right now by the stale second pod from the concurrent migration; expect it to roughly halve once that pod is garbage-collected.
+</li>
+<li>Still in Observe, Metrics, run the five panels with no vCenter equivalent, one query at a time.
+<pre><code>sum(rate(kubevirt_vmi_storage_flush_requests_total{namespace="demo-vms",name="vm-demo"}[5m]))
+kubevirt_vmi_memory_available_bytes{namespace="demo-vms",name="vm-demo"}
+kubevirt_vmi_memory_usable_bytes{namespace="demo-vms",name="vm-demo"}
+kubevirt_vmi_non_evictable{namespace="demo-vms"}
+kubevirt_vmi_guest_load_1m{namespace="demo-vms",name="vm-demo"}</code></pre>
+Numbers for each are in the table below.
+</li>
+<li>Trigger the live migration and watch the transfer counters move.
+<pre><code>virtctl migrate vm-demo -n demo-vms</code></pre>
+Then re-run these in Observe, Metrics, or leave a Perses/Grafana panel open on them: <code>kubevirt_vmi_migration_data_processed_bytes</code>, <code>kubevirt_vmi_migration_data_remaining_bytes</code>, <code>kubevirt_vmi_migration_data_total_bytes</code>, <code>kubevirt_vmi_migration_disk_transfer_rate_bytes</code>, all filtered to <code>{namespace="demo-vms",name="vm-demo"}</code>. Do not query <code>kubevirt_vmi_migration_dirty_memory_rate_bytes</code> on stage, it has an open accuracy bug and was deliberately left out of this run.
+</li>
+<li>Slice the whole fleet, not just vm-demo, by three different labels.
+<pre><code>topk(5, sum by (namespace,name)(rate(kubevirt_vmi_cpu_usage_seconds_total[5m])))
+count by (node)(kubevirt_vmi_info)
+count by (label_tier)(kube_pod_labels{namespace="demo-vms", label_kubevirt_io="virt-launcher"})</code></pre>
+The last query is the "slice by a business label" case. <code>kubevirt_vm_labels</code> does not exist on this cluster; <code>kube_pod_labels</code> on the virt-launcher pod is the working path, and <code>tier</code> is the label these demo VMs actually carry.
+</li>
+</ol>
+
+<h2>What you will see</h2>
+
+<div class="twocol">
+  <div class="card"><div class="num">144<small>distinct kubevirt_* metric names, cluster-wide (evidence/act1-metrics/SUMMARY.md, m02-total-distinct-kubevirt-metric-name-count.json)</small></div></div>
+  <div class="card"><div class="num">3,068<small>kubevirt_vmi_* series, cluster-wide (same file, m03-total-kubevirt-vmi-series-cluster-wide.json)</small></div></div>
+</div>
+
+<figure>
+  <img src="img/console-metrics-series-count-one-vm.png" alt="OpenShift console Observe, Metrics page showing the one-VM series count PromQL query and its result">
+  <figcaption>Observe, Metrics, running the one-VM series count query from step 1.</figcaption>
+</figure>
+<figure>
+  <img src="img/console-vm-metrics-tab.png" alt="The VirtualMachine detail page's own Metrics tab showing per-VM charts">
+  <figcaption>The VM's own Metrics tab, the same series without leaving the VM's detail page.</figcaption>
+</figure>
+<figure>
+  <img src="img/console-dashboard-kubevirt-top-consumers.png" alt="Observe, Dashboards, KubeVirt Top Consumers built-in dashboard listing VM names as plain text">
+  <figcaption>Observe, Dashboards, KubeVirt Top Consumers. VM names here are text, not links to their pods, which is exactly the dead end Demo 2 picks up from.</figcaption>
+</figure>
+
+<div class="tw">
+<table>
+<thead><tr><th>Query</th><th>Result</th><th>Evidence file</th></tr></thead>
+<tbody>
+<tr><td>VMI-scoped series only</td><td>61</td><td>evidence/act1-metrics/SUMMARY.md, 01-count-vmi-only.json</td></tr>
+<tr><td>+ VM-object series</td><td>72</td><td>02-count-vmi-plus-vm.json</td></tr>
+<tr><td>group_left() pod join, as originally written</td><td>errors, "grouping labels must ensure unique matches"</td><td>03-count-full-join-via-pod.json</td></tr>
+<tr><td>and on(namespace,pod) pod join, corrected</td><td>345, inflated by a stale second pod</td><td>03f-count-full-join-WORKING-and-based-equivalent.json</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Panel</th><th>Value</th><th>Evidence file</th></tr></thead>
+<tbody>
+<tr><td>Storage flush rate</td><td>0.0302 req/s</td><td>evidence/act1-metrics/SUMMARY.md</td></tr>
+<tr><td>Derived flush latency</td><td>0.0000631 s (about 63 microseconds)</td><td>same file</td></tr>
+<tr><td>Memory available</td><td>4,092,940,288 bytes (about 3.81 GiB)</td><td>same file</td></tr>
+<tr><td>Memory usable</td><td>3,686,178,816 bytes (about 3.43 GiB)</td><td>same file</td></tr>
+<tr><td>non_evictable, vm-demo</td><td>0</td><td>same file</td></tr>
+<tr><td>non_evictable, vm-demo-2</td><td>0</td><td>same file</td></tr>
+<tr><td>non_evictable, vm-non-migratable</td><td>1, matches the firing VMCannotBeEvicted alert</td><td>same file</td></tr>
+<tr><td>Guest OS load, 1m / 5m / 15m</td><td>0.177 / 0.0908 / 0.0547</td><td>same file</td></tr>
+<tr><td>vCPU delay, id 0 / id 1</td><td>0.0193 / 0.0581 s/s</td><td>same file, schedstats-gated</td></tr>
+<tr><td>vCPU wait, id 0 / id 1</td><td>0.0193 / 0.0581 s/s, same as delay on this sample, worth a second look before quoting both as independent</td><td>same file</td></tr>
+<tr><td>Allocated vCPUs</td><td>2, via the raw metric kubevirt_vmi_vcpu_count, the recording rule does not exist on this build</td><td>same file</td></tr>
+<tr><td>Domain memory vs virt-launcher WSS</td><td>4,294,967,296 bytes (4 GiB) vs 1,073,094,656 bytes (about 1.0 GiB)</td><td>same file</td></tr>
+<tr><td>Network rx / tx, idle guest</td><td>7.10 / 6.58 B/s, errors and drops all 0</td><td>same file</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note">
+<p>The virt-launcher WSS query, <code>container_memory_working_set_bytes{pod=~"virt-launcher-vm-demo-.*",container="compute"}</code>, over-matches, its regex also catches vm-demo-2's pod because <code>vm-demo</code> is a literal prefix of <code>vm-demo-2</code>. Anchor the regex or use the exact pod name before presenting this panel.</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Migration signal</th><th>Value</th><th>Evidence file</th></tr></thead>
+<tbody>
+<tr><td>Source node, target node</td><td>ec-f4-bb-ed-07-a8 to 24-6e-96-33-24-90</td><td>evidence/act1-migration/SUMMARY.md, before_after_node_state.txt</td></tr>
+<tr><td>VMIM wall time</td><td>47 s (13:37:45Z to 13:38:32Z)</td><td>vmim-final.yaml, phase_transition_sum.json</td></tr>
+<tr><td>Actual live-copy duration</td><td>14 s (13:38:17Z to 13:38:31Z)</td><td>vmi-migrationState.json</td></tr>
+<tr><td>Data processed</td><td>889,836,348 bytes (about 848.6 MiB)</td><td>range_data_processed_bytes.json</td></tr>
+<tr><td>Data remaining at completion</td><td>0 bytes</td><td>range_data_remaining_bytes.json</td></tr>
+<tr><td>Total data eligible</td><td>4,313,391,104 bytes (about 4.02 GiB)</td><td>data_total_bytes.json</td></tr>
+<tr><td>Transfer rate, one sampled value</td><td>466,555,260 bytes/s (about 445 MiB/s), the only scrape caught during the whole copy phase, not a measured peak</td><td>disk_transfer_rate_bytes.json</td></tr>
+<tr><td>VMI phase across all 18 poll ticks</td><td>Running throughout, no other phase recorded</td><td>timeline.csv</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="warn">
+<p>The 14-second copy phase was shorter than the Prometheus scrape interval, so the transfer rate metric was only ever scraped once, and it caught the final value, not a ramp. Say "the one rate sample KubeVirt exposed," not "the peak throughput." Also do not run the storage IOPS panel and this migration beat as the same on-stage moment, storage metric collection is known to be less reliable while a migration is in flight (0-prereqs-preflight-failure-modes.md, failure mode 8).</p>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Fleet slice</th><th>Result</th><th>Evidence file</th></tr></thead>
+<tbody>
+<tr><td>Top 5 VMs by vCPU usage rate, cluster-wide</td><td>hammer/hammer-sno 4.90, shannon/shannon-2 4.37, hammer/hammer2-sno 4.06, anaeem-dev/ocp-dev-worker-0 3.84, asaran/asaran 3.63 cores</td><td>evidence/act1-metrics/SUMMARY.md, l01-top5-vms-by-vcpu-usage-rate.json</td></tr>
+<tr><td>VMs per node</td><td>ec-f4-bb-ed-07-a8: 10, 24-6e-96-33-24-90: 11, 80-18-44-f0-71-30: 10 (31 total)</td><td>l05-vms-per-node.json</td></tr>
+<tr><td>Demo VMs by tier</td><td>db: 1, web: 2 (inflated by the same stale migration pod, expect 1 at steady state), nonmigratable: 1</td><td>l04a-demo-vms-by-tier-kube-pod-labels.json</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>What can go wrong</h2>
+<p>The full 15-row failure-mode table is in <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/0-prereqs-preflight-failure-modes.md">0-prereqs-preflight-failure-modes.md</a>. The ones that actually hit this act:</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>Symptom</th><th>Root cause</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td>vCPU delay/wait panels blank</td><td>schedstats=enable and PSI are two separate kernel-arg MachineConfigs, both need a reboot, and PSI does not exist on OpenShift 4.20 at all, it starts at 4.21</td><td>Apply schedstats ahead of time and confirm rollout. Do not add a PSI panel to a 4.20 deck.</td></tr>
+<tr><td>Guest load and memory panels blank</td><td>No qemu-guest-agent in the guest, or an agent older than 10.0.0</td><td>Bake the agent in via cloud-init, check AgentConnected, check qemu-ga version in-guest if only the load panels are empty.</td></tr>
+<tr><td>Any dashboard filtering on cgroup_id returns empty on this build</td><td>cAdvisor renamed cgroup_id to id under the cgroups v2 move on 4.20</td><td>Filter on id instead, and check any Red Hat shipped dashboard for the same pattern before trusting it live.</td></tr>
+<tr><td>Top Consumers Memory card reads zero</td><td>The recording rule vmi:kubevirt_vmi_memory_used_bytes:sum is absent on this build</td><td>Use kubevirt_vmi_memory_available_bytes minus kubevirt_vmi_memory_usable_bytes, the same math the missing rule would have done.</td></tr>
+<tr><td>Guest dirty-rate numbers look wrong</td><td>kubevirt_vmi_dirty_rate_bytes_per_second and kubevirt_vmi_migration_dirty_memory_rate_bytes both carry an open, orders-of-magnitude accuracy bug</td><td>Do not query either on stage. Use the migration data processed/remaining/total/transfer-rate metrics instead, none of those carry this caveat.</td></tr>
+<tr><td>The pod-join query 3 errors instead of returning a count</td><td>Either a concurrent migration leaves two pods with the same vm.kubevirt.io/name label, or this Thanos build rejects group_left() against a metric-name regex regardless of pod count</td><td>Use the and on(namespace,pod) form shown in step 3, it never needed the multiplied values in the first place.</td></tr>
+<tr><td>The pod-join query returns nothing at all on a different cluster</td><td>kube_pod_labels only exposes an arbitrary pod label like vm.kubevirt.io/name if it has been explicitly allow-listed on kube-state-metrics, which OpenShift does not do out of the box</td><td>Check this live before promising the join panel on a cluster you have not verified. Confirmed present on this one.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Status</h2>
+<ul>
+<li><strong>GA:</strong> kubevirt_vmi_* and kubevirt_vm_* metrics, virtctl live migration, Cluster Observability Operator, Perses dashboards (COO 1.5+, namespace-scoped).</li>
+<li><strong>GA metric, open bug:</strong> the dirty-rate metrics exist and are GA, but carry a known accuracy bug and were not used for any number on this page.</li>
+<li><strong>Present but not persistent:</strong> schedstats=enable is live on this cluster's workers via a runtime sysctl, not the documented MachineConfig, so the vCPU delay/wait panels work today and will go blank after the next node reboot until the MachineConfig is applied.</li>
+<li><strong>Not on this build:</strong> the recording rules vmi:kubevirt_vmi_vcpu:count and namespace:kubevirt_vm:sum, and the metric kubevirt_vm_labels, none exist on OpenShift Virtualization 4.20.24. Use the raw-metric substitutes shown above.</li>
+<li><strong>Out of scope:</strong> PSI (psi=1) needs OpenShift 4.21 or newer, this act targets 4.20.</li>
+</ul>
+
+<h2>Read more</h2>
+<ul>
+<li>Full write-up with every panel's PromQL and both dashboard files: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/1-act1-depth.md">1-act1-depth.md</a></li>
+<li>Prerequisites, install order, and the full failure-mode table: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/0-prereqs-preflight-failure-modes.md">0-prereqs-preflight-failure-modes.md</a></li>
+<li>Raw evidence for every number on this page: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/act1-metrics/SUMMARY.md">evidence/act1-metrics/SUMMARY.md</a> and <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/act1-migration/SUMMARY.md">evidence/act1-migration/SUMMARY.md</a></li>
+<li>Where this sits in the wider system: <a href="reference-architecture.html">reference architecture</a></li>
+</ul>
+
+</main>
+<footer><div class="shell">Numbers on this site come from a live run on 2026-09-11 (OpenShift 4.20.32, OpenShift Virtualization 4.20.24, Cluster Observability Operator 1.5.2). Every figure names the evidence file it came from. Source: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo">github.com/naeemarsalan/ocp-virt-observability-demo</a>.</div></footer>
+</body>
+</html>

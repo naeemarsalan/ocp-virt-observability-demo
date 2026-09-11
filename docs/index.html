@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenShift Virtualization observability demo</title>
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<header class="top"><div class="shell">
+  <a class="brand" href="index.html">OpenShift Virtualization observability demo</a>
+  <nav>
+    <a href="index.html" aria-current="page">Overview</a>
+    <a href="act1-depth.html">1 Depth</a>
+    <a href="act2-correlation.html">2 Correlation</a>
+    <a href="act2b-fleet.html">2b Fleet</a>
+    <a href="act3-agentic.html">3 Agentic</a>
+    <a href="reference-architecture.html">Reference architecture</a>
+    <a href="evidence.html">Evidence</a>
+    <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo">GitHub</a>
+  </nav>
+</div></header>
+<main class="shell">
+
+<p class="kicker">Demo site</p>
+<h1>OpenShift Virtualization observability, demo by demo</h1>
+<p class="lead">A VM's metrics, logs and network flows land in the same open, label indexed stores as every pod's and node's on the cluster: Prometheus and Thanos, Loki, and the network flow logs. That means you can join a VM's series to a pod's or a node's with plain PromQL, walk from a firing alert to the VM to its pod to its own logs in one correlation graph, and route that same alert into the automation pipeline you already run for containers. The four pages below each show one piece of that against a real, live cluster. The win here is not a prettier dashboard than vCenter's; it is where the data lives and what you can do with it once it's there.</p>
+
+<p class="meta">
+  <span>OpenShift 4.20.32</span>
+  <span>OpenShift Virtualization 4.20.24</span>
+  <span>Cluster Observability Operator 1.5.2, korrel8r 0.11.1</span>
+  <span>upstream korrel8r 0.12.1 run side by side in namespace demo-vms</span>
+  <span>Live run 2026-09-11</span>
+</p>
+
+<div class="cards">
+  <div class="card">
+    <div class="num">61<small>kubevirt_vmi_* series exposed by one idle VM, vm-demo (act1-metrics/SUMMARY.md)</small></div>
+  </div>
+  <div class="card">
+    <div class="num">6.8s<small>firing alert to VM, VMI, pod, node, metrics and logs over MCP, upstream korrel8r 0.12.1 (act3-mcp/SUMMARY.md)</small></div>
+  </div>
+  <div class="card">
+    <div class="num">14s<small>live-copy phase of a 47s vm-demo migration, about 849 MiB moved (act1-migration/SUMMARY.md)</small></div>
+  </div>
+  <div class="card">
+    <div class="num">12<small>node classes drawn from one VMI query, shipped korrel8r 0.11.1 (screenshots/SCREENSHOTS.md)</small></div>
+  </div>
+</div>
+
+<p>Each of the four demos below has its own evidence trail. Every number on this site names the file it came from.</p>
+
+<div class="cards">
+  <div class="card">
+    <span class="tag">GA metrics</span>
+    <h3>Demo 1: Depth</h3>
+    <p>One idle VM, vm-demo, exposes 61 <code>kubevirt_vmi_*</code> series and 72 once <code>kubevirt_vm_*</code> is added (act1-metrics/SUMMARY.md). A live migration of the same VM moved about 849 MiB in a 14 second copy phase, 47 seconds wall time end to end, VMI reporting Running on all 18 polls (act1-migration/SUMMARY.md). Four PromQL details in the original deck do not hold on this build, including a join operator and two recording rules that don't exist here (act1-metrics/SUMMARY.md).</p>
+    <a class="more" href="act1-depth.html">Read Demo 1 &rarr;</a>
+  </div>
+  <div class="card">
+    <span class="tag">GA, shipped 0.11.1</span>
+    <h3>Demo 2: Correlation</h3>
+    <p>Typing the VMI's own query into the Troubleshooting Panel on the shipped korrel8r 0.11.1 draws 12 node classes, down to 248 of 263 metric series and 1000 application log lines (screenshots/SCREENSHOTS.md). The same panel from the firing VMCannotBeEvicted alert draws only Alert and 128 metric series, because this build has no Alert to VMI rule (troubleshooting-panel/SUMMARY.md). Focus is disabled on the VirtualMachine, VMI and Pod pages here; it works from the Alerting list once Project is set to All Projects.</p>
+    <a class="more" href="act2-correlation.html">Read Demo 2 &rarr;</a>
+  </div>
+  <div class="card">
+    <span class="tag">GA, alert pending</span>
+    <h3>Demo 2b: Fleet</h3>
+    <p><code>kubevirt_vmi_number_of_outdated</code> has read 21 for a full 7 day window: 21 VMIs across 7 namespaces still running the old virt-launcher image (fleet-beat/SUMMARY.md). HyperConverged's <code>workloadUpdateMethods</code> is an empty list, so nothing moves those VMIs on its own (fleet-beat/SUMMARY.md). The 24 hour outdated-workloads alert is still Pending because both virt-controller replicas restart on leader election failures, 106 and 105 restarts each, resetting the alert's timer 36 times in 7 days (fleet-beat/SUMMARY.md).</p>
+    <a class="more" href="act2b-fleet.html">Read Demo 2b &rarr;</a>
+  </div>
+  <div class="card">
+    <span class="tag">Experimental</span>
+    <h3>Demo 3: Agentic</h3>
+    <p>Over MCP, upstream korrel8r 0.12.1 exposes 8 tools and, from the firing VMCannotBeEvicted alert, walks to the VM, VMI, pod, 3 nodes, 296 metric series and 200 log lines in 6.8 seconds (act3-mcp/SUMMARY.md). <code>get_objects</code> then turns those graph queries into real objects, the exact virt-launcher pod and its real log lines, with no query written by hand (act3-mcp/SUMMARY.md). The identical request against the GA Cluster Observability Operator 1.5.2 image, korrel8r 0.11.1, answers with the alert and 136 metric series only, because <code>AlertToVMI</code> isn't in that build's rule set (act3-mcp/SUMMARY.md).</p>
+    <a class="more" href="act3-agentic.html">Read Demo 3 &rarr;</a>
+  </div>
+</div>
+
+<h2>Honest limits</h2>
+<div class="warn">
+<p>Say these four things before anyone has to ask.</p>
+<ul>
+<li>The GA Cluster Observability Operator ships korrel8r 0.11.1, which has no Alert to VMI rule. From a firing alert its Troubleshooting Panel graph reaches only the Alert and 128 metric series, not the VM, the pod or its logs (troubleshooting-panel/SUMMARY.md, screenshots/SCREENSHOTS.md).</li>
+<li>Focus is disabled on the VirtualMachine, VirtualMachineInstance and Pod pages in this build. It only enables on the Alerting list page, and the workaround everywhere else is to type the korrel8r query straight into the panel's own query editor (screenshots/SCREENSHOTS.md).</li>
+<li>The 24 hour <code>OutdatedVirtualMachineInstanceWorkloads</code> alert has never fired on this cluster, even though 21 VMIs have been outdated for at least 7 days straight, because both virt-controller replicas restart on leader election lease renewal failures and every restart resets the alert's timer (fleet-beat/SUMMARY.md).</li>
+<li>Four PromQL details in the original deck do not hold on this build: the series-count join needs <code>and on(namespace,pod)</code> instead of <code>group_left</code>, the phase-transition histograms carry a <code>phase</code> label and no per-VM label at all, two claimed recording rules don't exist on 4.20.24, and <code>kubevirt_vmi_last_api_connection_timestamp_seconds</code> is labelled <code>vmi</code>, not <code>name</code> (act1-metrics/SUMMARY.md).</li>
+</ul>
+</div>
+
+<h2>Where VMware still wins</h2>
+<p>OpenShift Virtualization has no What-If capacity modelling and no predictive DRS that forecasts load forward in time the way VMware's stack does. There is no built-in cost and chargeback layer in this architecture, and Prometheus and Loki are not built for the multi-year native retention that vCenter's long-term stores offer. Concede this before the rest of the pitch; it is what makes the case for joinable telemetry land instead of sounding like a sales pitch.</p>
+
+<h2>How this was built</h2>
+<p>This ran on a shared lab cluster that already had three bare metal workers and 31 other people's VMs running on it (act1-metrics/SUMMARY.md), on OpenShift 4.20.32, OpenShift Virtualization 4.20.24, Cluster Observability Operator 1.5.2. On top of that, an in-cluster LokiStack backed by MinIO, Network Observability, the Logging and Troubleshooting Panel console plugins, three demo VMs in their own <code>demo-vms</code> namespace, and a second, upstream korrel8r 0.12.1 running next to the operator's own 0.11.1 so the two could be compared side by side were added. Nothing outside the demo namespaces was changed, no node was rebooted, and the cluster's existing log forwarder was left alone. Everything is still deployed so it can be walked through live.</p>
+<pre><code>./assets/teardown.sh --dry-run   # lists what would be removed
+./assets/teardown.sh --yes       # removes it; nothing pre-existing is touched</code></pre>
+
+<p>Read the full <a href="reference-architecture.html">reference architecture</a>, browse the raw <a href="evidence.html">evidence index</a>, or get the source, the runbook and every evidence file on <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo">GitHub</a>.</p>
+
+</main>
+<footer><div class="shell">Numbers on this site come from a live run on 2026-09-11 (OpenShift 4.20.32, OpenShift Virtualization 4.20.24, Cluster Observability Operator 1.5.2). Every figure names the evidence file it came from. Source: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo">github.com/naeemarsalan/ocp-virt-observability-demo</a>.</div></footer>
+</body>
+</html>
