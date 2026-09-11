@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ideas Beyond Observability</title>
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<header class="top"><div class="shell">
+  <a class="brand" href="index.html">OpenShift Virtualization observability demo</a>
+  <nav>
+    <a href="index.html">Overview</a>
+    <a href="act1-depth.html">1 Depth</a>
+    <a href="act2-correlation.html">2 Correlation</a>
+    <a href="act2b-fleet.html">2b Fleet</a>
+    <a href="act3-agentic.html">3 Agentic</a>
+    <a href="reference-architecture.html">Reference architecture</a>
+    <a href="evidence.html">Evidence</a>
+    <a href="ideas.html" aria-current="page">Ideas</a>
+    <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo">GitHub</a>
+  </nav>
+</div></header>
+<main class="shell">
+
+<p class="kicker">Beyond observability</p>
+<h1>18 more ways VMs benefit from a cloud native platform</h1>
+<p class="lead">You already ran a demo where Alertmanager fired a VM alert and Event-Driven Ansible, through AAP, turned it into remediation instead of a page. This builds on that: cloud native objects and patterns that make VM management on OpenShift Virtualization look like the rest of the platform, so the same GitOps, RBAC, and admission control your app teams use also covers VMs. It comes from a read-only inventory of this OpenShift 4.20.32 lab, ranked by a separate review. Three ideas need nothing new installed; the rest need one operator or one feature gate decision, called out below.</p>
+
+<h2>Top ideas, ranked</h2>
+
+<h3>1. GitOps for VirtualMachine objects with self-heal and sync waves</h3>
+<p><strong>What you show.</strong> Store VM, DataVolume, and instance type manifests in git. Point OpenShift GitOps at them with <code>selfHeal: true</code> and sync-wave annotations. Hand-edit a running VM's memory outside git and watch ArgoCD revert it within seconds.</p>
+<p><strong>Why it lands.</strong> Config drift is a felt vSphere pain; an on-stage auto-revert beats a scheduled report.</p>
+<p><strong>vSphere instead.</strong> Aria Automation Config flags drift on a schedule, a licensed add-on, not self-reverting.</p>
+<p><strong>Needs.</strong> GitOps operator plus a git repo. Already installed here.</p>
+<p><strong>Status.</strong> GA. KubeVirt's own guide documents managing VMs with GitOps.</p>
+<p><strong>Difficulty and catch.</strong> Easy. Self-heal also reverts a real emergency fix, so show the pause path (app suspend, or a maintenance-window label) too.</p>
+<p><strong>Source.</strong> <a href="https://kubevirt.io/user-guide/cluster_admin/gitops/">https://kubevirt.io/user-guide/cluster_admin/gitops/</a></p>
+
+<h3>2. VM as code: instance types and preferences catalog</h3>
+<p><strong>What you show.</strong> Reference a <code>VirtualMachineClusterInstancetype</code> and <code>VirtualMachinePreference</code> by name, for example <code>cx1.medium</code> with <code>rhel.9</code>, instead of hand-set cpu and memory. This cluster already has 119 such objects loaded. Resize a class of VMs by editing the shared object once, in git.</p>
+<p><strong>Why it lands.</strong> A named, shared sizing catalog is something vCenter has never had natively.</p>
+<p><strong>vSphere instead.</strong> Aria Automation's flavor mapping is the closest analog, an add-on, not a vCenter primitive.</p>
+<p><strong>Needs.</strong> Nothing; the catalog ships by default and 119 objects are already loaded here.</p>
+<p><strong>Status.</strong> GA, documented in the OpenShift Virtualization "Creating a virtual machine" guide.</p>
+<p><strong>Difficulty and catch.</strong> Easy, the fastest idea here to stage. A resize usually needs a restart to take effect.</p>
+<p><strong>Source.</strong> <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/virtualization/creating-a-virtual-machine">https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/virtualization/creating-a-virtual-machine</a></p>
+
+<h3>3. Scheduled VM lifecycle with a plain Kubernetes CronJob</h3>
+<p><strong>What you show.</strong> A CronJob under a scoped ServiceAccount patches <code>runStrategy</code>, or calls <code>virtctl stop</code>/<code>start</code>, on labeled dev and test VMs nightly and each morning. The schedule is one YAML file next to the VMs it targets.</p>
+<p><strong>Why it lands.</strong> Every vSphere shop already solves this with a script or an Aria power schedule; this makes it git-reviewed instead.</p>
+<p><strong>vSphere instead.</strong> Aria power schedules, or a PowerCLI script from vCenter Scheduled Tasks; no shared audit trail.</p>
+<p><strong>Needs.</strong> Just core Kubernetes: CronJob, ServiceAccount, RBAC. No CNV dependency.</p>
+<p><strong>Status.</strong> GA. CronJob is stable since Kubernetes 1.21; no CNV-native scheduled-power feature exists.</p>
+<p><strong>Difficulty and catch.</strong> Easy, a five-minute demo. No vendor support statement covers it; guard against stopping a VM mid migration.</p>
+<p><strong>Source.</strong> <a href="https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/">https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/</a> (upstream Kubernetes docs, not linked from this page; see the note at the end of this page on external links)</p>
+
+<h3>4. SLA-tiered live migration and node maintenance</h3>
+<p><strong>What you show.</strong> Set <code>evictionStrategy: LiveMigrate</code>, then cordon and drain its node while a ping runs in the guest, and watch the VM hop nodes instead of restarting. A <code>MigrationPolicy</code> CR gives a "gold" VM a tight timeout and a "bronze" VM a relaxed one.</p>
+<p><strong>Why it lands.</strong> Maps onto per-VM DRS/HA rules and Maintenance Mode evacuation, concepts a VMware admin knows.</p>
+<p><strong>vSphere instead.</strong> DRS/HA rules and vMotion, or Maintenance Mode evacuation, set in vCenter, not code.</p>
+<p><strong>Needs.</strong> An RWX storage class and a MigrationPolicy CR. Five exist here; no Node Maintenance Operator, so use <code>oc adm drain</code> directly.</p>
+<p><strong>Status.</strong> GA, documented since OCP 4.3.</p>
+<p><strong>Difficulty and catch.</strong> Easy. Plain <code>iscsi</code> here is RWO-only, so a VM on it gets evicted, not migrated.</p>
+<p><strong>Source.</strong> <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/virtualization/live-migration">https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/virtualization/live-migration</a></p>
+
+<h3>5. VM State RBAC: start and stop as a permission, not a button</h3>
+<p><strong>What you show.</strong> A Role granting get, list, and watch on virtualmachines but withholding the start/stop verb, bound to a junior account and proved with <code>oc auth can-i</code>. A second Role with that verb shows it now can.</p>
+<p><strong>Why it lands.</strong> Separating "can see a VM" from "can power it on" is a normal ask on shared infrastructure.</p>
+<p><strong>vSphere instead.</strong> vCenter's privilege tree has done this for over a decade; here it's plain RBAC YAML.</p>
+<p><strong>Needs.</strong> Standard RBAC plus CNV subresource verbs, already present here.</p>
+<p><strong>Status.</strong> GA, documented in the OCP 4.20 virtualization guide.</p>
+<p><strong>Difficulty and catch.</strong> Easy. It only proves from a terminal unless the console is shown too.</p>
+<p><strong>Source.</strong> <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/virtualization/managing-vms">https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/virtualization/managing-vms</a></p>
+
+<h3>6. Snapshots, restores, clones and exports as Kubernetes objects</h3>
+<p><strong>What you show.</strong> A live, guest-coordinated <code>VirtualMachineSnapshot</code>, a <code>VirtualMachineRestore</code> onto the same VM, a <code>VirtualMachineClone</code> into another namespace, and a <code>VirtualMachineExport</code> over HTTP, all plain <code>oc get</code>-able objects.</p>
+<p><strong>Why it lands.</strong> These become RBAC-governed objects a pipeline can gate on, no vendor SDK call needed.</p>
+<p><strong>vSphere instead.</strong> Native snapshot, clone, and Content Library OVA export; mature already, the win here is the object model.</p>
+<p><strong>Needs.</strong> All four CRD families already installed; check CSI VolumeSnapshot support per class.</p>
+<p><strong>Status.</strong> GA, including live and online snapshotting.</p>
+<p><strong>Difficulty and catch.</strong> Easy for the objects, medium to wire into Tekton. Not backup: no scheduling or off-cluster copy without OADP/Velero.</p>
+<p><strong>Source.</strong> <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/virtualization/backup-and-restore">https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/virtualization/backup-and-restore</a></p>
+
+<h3>7. Zero-install guardrails with ValidatingAdmissionPolicy</h3>
+<p><strong>What you show.</strong> A <code>ValidatingAdmissionPolicy</code> rejecting a VM missing an instance type reference, or one pairing LiveMigrate with an RWO-only disk. Try creating a non-compliant VM and watch the API server reject it, no extra pod running.</p>
+<p><strong>Why it lands.</strong> An in-apiserver check with zero extra pods, versus standards enforced by convention or a licensed gate.</p>
+<p><strong>vSphere instead.</strong> Compliance profiles, manual review, or Aria blueprint and tagging rules at provisioning time.</p>
+<p><strong>Needs.</strong> Native ValidatingAdmissionPolicy and Binding, no operator. Neither Kyverno nor Gatekeeper is on this cluster.</p>
+<p><strong>Status.</strong> GA upstream since Kubernetes 1.30, well before OCP 4.20.</p>
+<p><strong>Difficulty and catch.</strong> Medium; CEL against nested specs is fussy. It only rejects, it cannot auto-fix a bad spec.</p>
+<p><strong>Source.</strong> <a href="https://kubernetes.io/docs/reference/access-authn-authz/validating-admission-policy/">https://kubernetes.io/docs/reference/access-authn-authz/validating-admission-policy/</a> (upstream Kubernetes docs, not linked from this page)</p>
+
+<h3>8. Namespace tenancy: kubevirt.io roles plus ResourceQuota</h3>
+<p><strong>What you show.</strong> Two namespaces as tenant boundaries, <code>kubevirt.io:edit</code> bound per namespace, a ResourceQuota capping <code>count/virtualmachines</code> and <code>requests.cpu</code>. A user in one namespace gets a 403 reading VMs in the other.</p>
+<p><strong>Why it lands.</strong> One construct, namespace plus RBAC plus quota, governs VMs and everything else together.</p>
+<p><strong>vSphere instead.</strong> Folders or resource pools plus separate CPU/memory shares, three constructs to keep in sync by hand.</p>
+<p><strong>Needs.</strong> Namespaces, default kubevirt.io ClusterRoles, ResourceQuota. 65 VMs and 119 instance types already exist.</p>
+<p><strong>Status.</strong> GA, long-standing default ClusterRoles.</p>
+<p><strong>Difficulty and catch.</strong> Easy, pure YAML. This is API-access and fairness, not isolation; two tenants can still share a node.</p>
+<p><strong>Source.</strong> <a href="https://kubevirt.io/user-guide/cluster_admin/authorization/">https://kubevirt.io/user-guide/cluster_admin/authorization/</a></p>
+
+<h3>9. VM placement rules: affinity and anti-affinity as code</h3>
+<p><strong>What you show.</strong> <code>nodeAffinity</code> pinning a VM to <code>disktype=ssd</code> nodes, and <code>podAntiAffinity</code> spreading two replica VMs across nodes, the same syntax already used for pods. Confirm with <code>oc get vmi -o wide</code>.</p>
+<p><strong>Why it lands.</strong> The same syntax app teams already write for containers, so placement becomes shared knowledge.</p>
+<p><strong>vSphere instead.</strong> DRS VM/Host affinity rules, configured per cluster in vCenter, invisible outside it.</p>
+<p><strong>Needs.</strong> Nothing; these are core VirtualMachine spec fields.</p>
+<p><strong>Status.</strong> GA, mirrors core Kubernetes pod affinity.</p>
+<p><strong>Difficulty and catch.</strong> Easy. A hard rule with too few matching nodes leaves a VM stuck Pending; check node count first.</p>
+<p><strong>Source.</strong> <a href="https://kubevirt.io/user-guide/compute/node_assignment/">https://kubevirt.io/user-guide/compute/node_assignment/</a></p>
+
+<h3>10. NetworkPolicy micro-segmentation for VM traffic</h3>
+<p><strong>What you show.</strong> A default-deny NetworkPolicy in a VM namespace, plus a narrow allow rule, for example a web-tier VM to a db-tier VM on port 5432, using ordinary NetworkPolicy YAML. Test the connection from inside the guest before and after.</p>
+<p><strong>Why it lands.</strong> One firewalling model covers VMs and containers side by side, no separate product or license.</p>
+<p><strong>vSphere instead.</strong> NSX-T Distributed Firewall, with flow visibility and L7-aware profiles a plain NetworkPolicy does not match.</p>
+<p><strong>Needs.</strong> OVN-Kubernetes and NetworkPolicy; NADs are already active in 8 namespaces here.</p>
+<p><strong>Status.</strong> GA, core OpenShift networking.</p>
+<p><strong>Difficulty and catch.</strong> Easy. No built-in flow-log UI, no Layer 7 rules; a free L3/L4 layer, not an NSX-DFW replacement.</p>
+<p><strong>Source.</strong> <a href="https://kubevirt.io/user-guide/architecture/">https://kubevirt.io/user-guide/architecture/</a></p>
+
+<h3>11. Real-time load rebalancing with the descheduler</h3>
+<p><strong>What you show.</strong> Install the Kube Descheduler Operator and set profile <code>KubeVirtRelieveAndMigrate</code> (renamed from <code>DevKubeVirtRelieveAndMigrate</code>, GA in 4.20). It enables <code>LowNodeUtilization</code> with <code>EvictionsInBackground</code>, scored on actual CPU utilization from Prometheus combined with PSI (<code>devActualUtilizationProfile: PrometheusCPUCombined</code>), against deviation thresholds (Low 10%/10%, Medium 20%/20%, High 30%/30%, plus asymmetric variants). <code>devEnableSoftTainter</code> soft-taints hot nodes as a scheduling hint before any eviction. Set <code>mode: Automatic</code> (<code>Predictive</code> is a dry run only), matching <code>evictionLimits</code> to the HyperConverged CR's live-migration concurrency. A VM opts out with the annotation <code>descheduler.alpha.kubernetes.io/prefer-no-eviction</code> on its template annotations.</p>
+<p><strong>Why it lands.</strong> DRS load balancing is one of vSphere's most trusted features; this is Red Hat's GA answer.</p>
+<p><strong>vSphere instead.</strong> DRS already vMotions on real-time utilization, not just allocation. The real edge is PSI, a kernel pressure signal DRS does not read; the CPU side is parity.</p>
+<p><strong>Needs.</strong> The Kube Descheduler Operator (not installed here; catalog carries v5.3.4) and PSI enabled on every worker via a MachineConfig <code>psi=1</code> kernel argument, forcing a rolling reboot of the fleet.</p>
+<p><strong>Status.</strong> GA in OpenShift Virtualization 4.20, per the release notes.</p>
+<p><strong>Difficulty and catch.</strong> Hard, and reactive, not predictive: it responds to load already built up, with no forecasting like DRS. It reads CPU and PSI, not memory. Not Storage DRS or DPM: no disk balancing, no host power-down, no what-if planner. On this lab it was not demoed: the operator is not installed and PSI is not enabled, which would mean rebooting every worker.</p>
+<p><strong>Source.</strong> <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/virtualization/openshift-virtualization-release-notes">https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/virtualization/openshift-virtualization-release-notes</a> and <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/nodes/controlling-pod-placement-onto-nodes-scheduling">https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/nodes/controlling-pod-placement-onto-nodes-scheduling</a></p>
+
+<h3>12. Live hot-plug: CPU, memory, disks and NICs with no reboot</h3>
+<p><strong>What you show.</strong> Hot-add a disk and a vNIC to a running VM, then bump vCPU and memory, all with no reboot and a ping running throughout.</p>
+<p><strong>Why it lands.</strong> Each change is one command against a spec that is its own audit trail, not four vCenter dialogs.</p>
+<p><strong>vSphere instead.</strong> vSphere already hot-adds all four; this is parity, the win is a diffable object, not a new capability.</p>
+<p><strong>Needs.</strong> Disk hot-plug is long GA; CPU and memory hot-plug need instance type opt-in and ride the live-migration path.</p>
+<p><strong>Status.</strong> GA; CPU hot-plug shipped in 4.16 per Red Hat's own blog. A 4.17 memory-hotplug claim appears elsewhere but was not confirmed here.</p>
+<p><strong>Difficulty and catch.</strong> Medium. It rides live migration, so a VM on plain <code>iscsi</code> (RWO) cannot hot-plug CPU or memory.</p>
+<p><strong>Source.</strong> <a href="https://www.redhat.com/en/blog/whats-new-openshift-virtualization-416">https://www.redhat.com/en/blog/whats-new-openshift-virtualization-416</a> (redhat.com blog, not linked from this page)</p>
+
+<h2>Ideas from the mixed-application lens</h2>
+<p>Each idea puts a VM and a container component in one namespace or request path, on one Kubernetes object, instead of separate VM and container tools.</p>
+
+<h3>13. Service and Route in front of a VM</h3>
+<p><strong>What you show.</strong> A VM behind a plain Service and Route, like a pod app.</p>
+<p><strong>Why it lands.</strong> Not IP mobility, vSphere already keeps a VM's IP across vMotion. The win is one config surface and GitOps flow for both.</p>
+<p><strong>vSphere instead.</strong> A static IP plus a manually managed NSX Advanced Load Balancer or F5 VIP.</p>
+<p><strong>Needs.</strong> Nothing beyond OpenShift Virtualization.</p>
+<p><strong>Status.</strong> GA, a standard doc chapter.</p>
+<p><strong>Difficulty and catch.</strong> Easy; really just <code>kubectl expose vm</code>. A consistency win, not a resiliency one.</p>
+<p><strong>Source.</strong> <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/virtualization/networking#virt-exposing-vm-with-service">https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/virtualization/networking#virt-exposing-vm-with-service</a></p>
+
+<h3>14. Gateway API and Service Mesh routing to a VM</h3>
+<p><strong>What you show.</strong> One gateway splits traffic between a VM-backed and a pod-backed Service; the VM's sidecar adds mTLS and traffic-splitting.</p>
+<p><strong>Why it lands.</strong> NSX-ALB or F5 do this too, but as a separate product for a separate team; here it is one Gateway API resource.</p>
+<p><strong>vSphere instead.</strong> NSX-ALB or F5 GSLB and VIP pools, apart from Ingress.</p>
+<p><strong>Needs.</strong> OpenShift Service Mesh with the VM sidecar-injection annotation on the VMI.</p>
+<p><strong>Status.</strong> Sidecar-mode VM mesh is standard; ambient mode is only in OSSM 3.4 docs, and this lab runs OSSM 2.6.</p>
+<p><strong>Difficulty and catch.</strong> Medium; demo sidecar mode, not ambient, without a 3.x upgrade plan.</p>
+<p><strong>Source.</strong> <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/virtualization/networking#virt-connecting-vm-to-service-mesh">https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/virtualization/networking#virt-connecting-vm-to-service-mesh</a></p>
+
+<h3>15. Container front end talking to a database VM, one NetworkPolicy</h3>
+<p><strong>What you show.</strong> A container front end reaches a database VM, restricted by one NetworkPolicy naming the allowed pods and port; the VM's pod (virt-launcher) takes plain NetworkPolicy like any workload.</p>
+<p><strong>Why it lands.</strong> On vSphere plus NSX the same rule is a distributed firewall rule owned by a separate team; here it is one YAML object.</p>
+<p><strong>vSphere instead.</strong> NSX distributed firewall rules or VM firewall groups, outside Kubernetes.</p>
+<p><strong>Needs.</strong> Standard NetworkPolicy, already GA; correct virt-launcher labels.</p>
+<p><strong>Status.</strong> GA.</p>
+<p><strong>Difficulty and catch.</strong> Check the real labels first; a default-deny in a namespace that never had one, 65 VMs and 8 NAD namespaces here, can break existing traffic.</p>
+<p><strong>Source.</strong> <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/network_security">https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/network_security</a></p>
+
+<h3>16. Developer Hub template: provision a VM plus its app from one form</h3>
+<p><strong>What you show.</strong> A Backstage form takes a VM size and app image, producing a VirtualMachine, from one of 119 instance type and preference objects here, plus a Deployment, Service, and Route, one catalog entry in git.</p>
+<p><strong>Why it lands.</strong> Aria's catalog has no Deployment concept, so a mixed request splits across two catalogs; here it is one.</p>
+<p><strong>vSphere instead.</strong> Aria blueprints provision the VM; the container part uses a separate CI/CD catalog.</p>
+<p><strong>Needs.</strong> Developer Hub with the Kubernetes plugin, GitOps already present, and a hand-built template.</p>
+<p><strong>Status.</strong> Developer Hub is GA; no shipped kubevirt scaffolder action exists.</p>
+<p><strong>Difficulty and catch.</strong> Hard; real build work plus an RBAC review, since the form grants VM-create rights.</p>
+<p><strong>Source.</strong> <a href="https://github.com/redhat-developer/rhdh-plugins">https://github.com/redhat-developer/rhdh-plugins</a></p>
+
+<h3>17. OpenShift AI notebook next to a GPU-backed VM</h3>
+<p><strong>What you show.</strong> A notebook and a GPU VM, say a legacy CAD box, both scheduled on GPU Operator and NFD hardware, one inventory for both.</p>
+<p><strong>Why it lands.</strong> vSphere's vGPU manager carves a GPU for a VM, but container GPU access needs a separate GPU Operator elsewhere; here it is one inventory.</p>
+<p><strong>vSphere instead.</strong> NVIDIA vGPU manager as an ESXi VIB for VMs; container GPU access, if any, runs separately.</p>
+<p><strong>Needs.</strong> GPU Operator and NFD, already present; passthrough or vGPU configuration on the HyperConverged CR's <code>permittedHostDevices</code> list.</p>
+<p><strong>Status.</strong> GA; standard Managing VMs chapters.</p>
+<p><strong>Difficulty and catch.</strong> Passthrough locks a card to one VM; only vGPU-licensed cards share. Check the model first.</p>
+<p><strong>Source.</strong> <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/virtualization/managing-vms#virt-configuring-virtual-gpus">https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/virtualization/managing-vms#virt-configuring-virtual-gpus</a></p>
+
+<h3>18. One alert pipeline and one dashboard for both halves</h3>
+<p><strong>What you show.</strong> A Grafana dashboard shows VM and pod metrics from one namespace side by side; one Alertmanager routes a VM disk-pressure and a pod crash-loop alert alike.</p>
+<p><strong>Why it lands.</strong> vSphere splits VM health (vCenter or Aria) from pod health (a separate stack); here it is one Prometheus, one Alertmanager, one Grafana.</p>
+<p><strong>vSphere instead.</strong> vCenter or Aria alarms cover VMs; a separate stack covers pods, joined by hand.</p>
+<p><strong>Needs.</strong> Cluster Observability Operator and Grafana Operator, both present, plus a shared label convention.</p>
+<p><strong>Status.</strong> GA; already installed here.</p>
+<p><strong>Difficulty and catch.</strong> The console ships separate built-in dashboards; a mixed view means authoring one yourself.</p>
+<p><strong>Source.</strong> <a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/virtualization/monitoring">https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/virtualization/monitoring</a></p>
+
+<h2>Three you could run tomorrow on this cluster</h2>
+<p>These three need no new operator and no feature gate.</p>
+
+<h3>1. VM as code: instance type catalog</h3>
+<ol class="steps">
+<li>Run <code>oc get virtualmachineclusterinstancetypes</code>.</li>
+<li>Pick a pair, for example <code>cx1.medium</code> and <code>rhel.9</code>.</li>
+<li>Create a VM referencing them by name.</li>
+<li>Show <code>oc get vm</code>/<code>vmi</code> running; no cpu or memory block in the spec.</li>
+<li>Edit the instance type's memory in git, apply, restart, show the change.</li>
+</ol>
+
+<h3>2. Scheduled VM lifecycle with a CronJob</h3>
+<ol class="steps">
+<li>Pick two or three labeled dev/test VMs from the 65 already here.</li>
+<li>Create a ServiceAccount and a Role/RoleBinding scoped to that namespace.</li>
+<li>Write a CronJob running <code>virtctl stop</code> nightly and one running <code>virtctl start</code> mornings.</li>
+<li>Apply both; trigger one manually with <code>kubectl create job --from=cronjob/...</code>.</li>
+<li>Show the CronJob, RBAC, and schedule in the same git repo as the VMs.</li>
+</ol>
+
+<h3>3. GitOps for VirtualMachine objects with self-heal</h3>
+<ol class="steps">
+<li>Export a few VM, DataVolume, and NetworkAttachmentDefinition manifests into git.</li>
+<li>Add sync-wave annotations so DataVolumes and NADs land first.</li>
+<li>Point an ArgoCD Application at the repo with automated sync and <code>selfHeal: true</code>.</li>
+<li>Sync once, confirm Synced and Healthy.</li>
+<li>Hand-edit a running VM's memory outside git and show ArgoCD revert it.</li>
+</ol>
+
+<h2>What is genuinely difficult</h2>
+<div class="tw">
+<table>
+<thead><tr><th>Problem</th><th>Why</th><th>Mitigation</th><th>Source</th></tr></thead>
+<tbody>
+<tr>
+<td>RWX-vs-RWO storage, plus the migration network</td>
+<td>Live migration, hot-plug, and storage migration all need RWX storage; a VM on RWO storage is blocked or restarted, not migrated, and migration traffic competes with pod traffic without a dedicated migration network.</td>
+<td>Run <code>oc get storageclass</code> first, standardize new disks on an RWX class, and set up a dedicated migration network early.</td>
+<td><a href="https://kubevirt.io/user-guide/compute/live_migration/">https://kubevirt.io/user-guide/compute/live_migration/</a></td>
+</tr>
+<tr>
+<td>Self-heal fighting a human's emergency fix</td>
+<td>Self-heal silently reverts an on-call fix unless the team has a pause path.</td>
+<td>Give the app a suspend step or a maintenance-window label, and drill it.</td>
+<td><a href="https://kubevirt.io/user-guide/cluster_admin/gitops/">https://kubevirt.io/user-guide/cluster_admin/gitops/</a></td>
+</tr>
+<tr>
+<td>No vendor-shipped remediation content</td>
+<td>There is no Red Hat rulebook or pipeline library for VM problems; every one is authored in house.</td>
+<td>Budget real time for it.</td>
+<td><a href="https://kubevirt.io/monitoring/runbooks_index.html">https://kubevirt.io/monitoring/runbooks_index.html</a></td>
+</tr>
+<tr>
+<td>Tech Preview as a one-way door</td>
+<td>Enabling a <code>TechPreviewNoUpgrade</code> gate, such as VM Storage Live Migration, blocks future upgrades.</td>
+<td>Do not enable it on a shared cluster with real VMs; demo from a recording.</td>
+<td><a href="https://access.redhat.com/solutions/7089972">https://access.redhat.com/solutions/7089972</a> (access.redhat.com, not linked from this page)</td>
+</tr>
+<tr>
+<td>Packaging changes between versions</td>
+<td>The Tekton Tasks Operator older docs describe is gone; VM tasks now come from ssp-operator and ArtifactHub.</td>
+<td>Pull the current catalog before following any guide.</td>
+<td><a href="https://access.redhat.com/solutions/7093978">https://access.redhat.com/solutions/7093978</a> (access.redhat.com, not linked from this page)</td>
+</tr>
+<tr>
+<td>Assuming a product is wired up</td>
+<td>This cluster has 11 aap-* namespaces and AAP/EDA CRDs, but no confirmed OLM Subscription or reachable EDA controller.</td>
+<td>Confirm with a read-only check first; namespace names are not proof of an install.</td>
+<td><a href="https://www.redhat.com/en/technologies/management/ansible/event-driven-ansible">https://www.redhat.com/en/technologies/management/ansible/event-driven-ansible</a> (redhat.com, not linked from this page)</td>
+</tr>
+<tr>
+<td>Placement rules that cannot be satisfied</td>
+<td>A hard affinity rule written without checking node count leaves a VM stuck Pending.</td>
+<td>Run <code>oc get nodes --show-labels</code> first.</td>
+<td><a href="https://kubevirt.io/user-guide/compute/node_assignment/">https://kubevirt.io/user-guide/compute/node_assignment/</a></td>
+</tr>
+<tr>
+<td>Signal-driven automation needs a warm-up, and it is reactive, not predictive</td>
+<td>The descheduler needs several scrape intervals before it acts, and it responds to load already built up rather than forecasting ahead like DRS.</td>
+<td>Start the stress workload minutes ahead.</td>
+<td><a href="https://developers.redhat.com/blog/2025/06/03/dynamic-vm-cpu-workload-rebalancing-load-aware-descheduler">https://developers.redhat.com/blog/2025/06/03/dynamic-vm-cpu-workload-rebalancing-load-aware-descheduler</a> (developers.redhat.com, not linked from this page)</td>
+</tr>
+<tr>
+<td>Windows and the guest agent both need manual care</td>
+<td>Windows has no native virtio drivers, so a driver disk or golden image is needed, plus a clock check after migration; qemu-guest-agent is optional, so a missing agent gives crash-consistent snapshots with no error.</td>
+<td>Build one hardened golden image with drivers, time-sync, and the agent verified, then clone from it.</td>
+<td><a href="https://kubevirt.io/user-guide/user_workloads/guest_agent_information/">https://kubevirt.io/user-guide/user_workloads/guest_agent_information/</a></td>
+</tr>
+<tr>
+<td>Day-1 learning curve, and no built-in capacity or what-if tool</td>
+<td>The console covers VM lifecycle but not vCenter-style topology maps or one-click patching, and there is no Aria-style what-if planner, only Prometheus queries and quotas.</td>
+<td>Budget weeks for admins moving from vSphere, and track capacity on the observability stack already installed.</td>
+<td><a href="https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html-single/virtualization/index">https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html-single/virtualization/index</a></td>
+</tr>
+<tr>
+<td>Performance tuning and node maintenance are manual, per-VM opt-ins</td>
+<td>CPU pinning, hugepages, and NUMA all need node prep, Guaranteed QoS, a kernel argument, a reboot, before any VM can use them; single-node maintenance is a hand-run <code>oc adm drain</code>, since the Node Maintenance Operator is not installed.</td>
+<td>Build audited instance types for performance-critical VMs, and install the Node Maintenance Operator if node work is routine.</td>
+<td><a href="https://kubevirt.io/user-guide/compute/dedicated_cpu_resources/">https://kubevirt.io/user-guide/compute/dedicated_cpu_resources/</a></td>
+</tr>
+<tr>
+<td>The monitoring stack has real, underestimated cost and a blind spot</td>
+<td>KubeVirt exposes 67 <code>kubevirt_vmi_</code> metrics alone, multiplied per disk, NIC, and vCPU, so sizing Prometheus, Loki, and Grafana is real work; separately, the upgrade-completion alert <code>OutdatedVirtualMachineInstanceWorkloads</code> needs 24 continuous hours to fire, and a monitoring-pod restart during an upgrade resets that countdown to zero.</td>
+<td>Size the stack from each project's own sizing guide, and query <code>kubevirt_vmi_number_of_outdated</code> directly after an upgrade instead of waiting on the alert.</td>
+<td><a href="https://github.com/kubevirt/monitoring/blob/main/docs/metrics.md">https://github.com/kubevirt/monitoring/blob/main/docs/metrics.md</a></td>
+</tr>
+<tr>
+<td>Migrating in from VMware, and backing up VMs, both need an extra operator not installed here</td>
+<td>The Migration Toolkit for Virtualization handles inbound migration, with real warm-migration limits (Changed Block Tracking required, a 28-snapshot cap); the snapshot, clone, and export CRDs already here are building blocks, not scheduled off-cluster backup, which needs OADP configured separately.</td>
+<td>Pilot MTV on a small batch first, and install and test-restore OADP if scheduled VM backup is required.</td>
+<td><a href="https://docs.redhat.com/en/documentation/migration_toolkit_for_virtualization/2.9/html-single/installing_and_using_the_migration_toolkit_for_virtualization/index">https://docs.redhat.com/en/documentation/migration_toolkit_for_virtualization/2.9/html-single/installing_and_using_the_migration_toolkit_for_virtualization/index</a></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Two more lessons: a single-cluster pilot cannot show ACM's fleet-wide payoff, and any GA or tech-preview claim should be checked against the target version's own release notes.</p>
+
+<h2>What to say to a skeptic</h2>
+<div class="warn">
+<p>Storage vMotion is more mature than anything shown here; KubeVirt's storage migration is still tech preview, and that should be said first, not last. NSX-T Distributed Firewall does more today than a plain NetworkPolicy, with flow visibility and Layer 7 profiles a free CNI feature does not match. A vSphere admin's workflow library for common alarms is real and pre-built; every rulebook and pipeline here is something your own team writes and owns. vSphere DRS already balances hosts on real-time utilization, not just allocation, so the descheduler's edge is one new signal, PSI, not a smarter DRS. The descheduler is also reactive, not predictive: it acts on load that has already built up, where vSphere's predictive DRS forecasts ahead of it. None of that changes the point: the same VirtualMachine, RBAC, NetworkPolicy, and GitOps objects your app teams already use now also cover VMs, in the same git repo and audit trail, a real change in operating model even where the underlying capability is only parity.</p>
+</div>
+</main>
+<footer><div class="shell">Numbers on this site come from a live run on 2026-09-11 (OpenShift 4.20.32, OpenShift Virtualization 4.20.24, Cluster Observability Operator 1.5.2). Every figure names the evidence file it came from. Source: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo">github.com/naeemarsalan/ocp-virt-observability-demo</a>.</div></footer>
+</body>
+</html>

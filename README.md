@@ -8,9 +8,12 @@ We're not going to win by saying our dashboards are nicer than vCenter's. Out of
 
 ## Start here
 
+The site version of everything below is at https://naeemarsalan.github.io/ocp-virt-observability-demo/ with one page per demo.
+
 - `reference-architecture.html` is a single self-contained page: the logical view, an animated walk through one real incident with the real numbers, the ports, the trade-offs, and where VMware still wins. Open it in a browser. Light and dark both work.
 - `REFERENCE-ARCHITECTURE.md` is the same architecture as a written brief, for people who want to read rather than click.
 - `RUNBOOK.md` is what you follow to give the demo, updated with everything the live run changed.
+- `IDEAS.md` is the next step: 18 more ways to show VMs benefiting from a cloud-native platform, ranked by a skeptical review, plus what is genuinely difficult. The descheduler entry answers the "do we have DRS now" question with the verified 4.20 facts.
 - `evidence/` is the proof. Every number in the pages above comes from a file in there. Start with the `SUMMARY.md` in each folder and `evidence/screenshots/SCREENSHOTS.md`.
 
 ## What we ran
