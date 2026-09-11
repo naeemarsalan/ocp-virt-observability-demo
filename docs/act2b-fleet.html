@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Still on the Old Image</title>
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<header class="top"><div class="shell">
+  <a class="brand" href="index.html">OpenShift Virtualization observability demo</a>
+  <nav>
+    <a href="index.html">Overview</a>
+    <a href="act1-depth.html">1 Depth</a>
+    <a href="act2-correlation.html">2 Correlation</a>
+    <a href="act2b-fleet.html" aria-current="page">2b Fleet</a>
+    <a href="act3-agentic.html">3 Agentic</a>
+    <a href="reference-architecture.html">Reference architecture</a>
+    <a href="evidence.html">Evidence</a>
+    <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo">GitHub</a>
+  </nav>
+</div></header>
+<main class="shell">
+
+<p class="kicker">Demo 2b of 4</p>
+<h1>Still on the Old Image</h1>
+<p class="lead">After an OpenShift Virtualization upgrade, one gauge tells you how many running VMs are still on the old virt-launcher pod, and a label query tells you exactly which ones. The one thing to take away: the alert built to escalate this has been sitting Pending for a week on true data, not because the fleet is fine, but because the component reporting it keeps restarting and resetting its own clock.</p>
+<p class="meta"><span>21 outdated VMIs, 7 namespaces</span><span>OpenShift 4.20.32, OpenShift Virtualization 4.20.24</span><span>live run 2026-09-11</span></p>
+
+<div class="status">
+  <span class="ga">kubevirt_vmi_number_of_outdated metric: GA</span>
+  <span class="ga">OutdatedVirtualMachineInstanceWorkloads alert rule: GA</span>
+  <span class="ga">HyperConverged workloadUpdateStrategy field: GA</span>
+  <span>on this cluster: alert stuck Pending, drain disabled</span>
+</div>
+
+<h2>What this demo shows</h2>
+<p>OpenShift Virtualization 4.20.24 is installed and Succeeded on this cluster, but 21 running VMIs across 7 namespaces are still executing inside a virt-launcher pod built from the pre-upgrade image digest. A single gauge, <code>kubevirt_vmi_number_of_outdated</code>, has read 21 continuously for at least 7 days (evidence/fleet-beat/SUMMARY.md). A label query names every one of those 21 VMIs by namespace. Two virt-launcher image digests coexist cluster-wide right now, 22 pods on the old one and 11 on the current one, and the HyperConverged CR's <code>workloadUpdateMethods</code> field is an empty list, so nothing is moving any of the 21 off the old image on its own. The alert designed to escalate exactly this condition, <code>OutdatedVirtualMachineInstanceWorkloads</code>, has a 24-hour <code>for</code> clause and has been Pending, not Firing, the entire week, because both virt-controller replicas keep losing their leader-election lease and restarting, which resets the alert's 24-hour timer every time. This demo is entirely read-only: the patch that would enable draining is shown and explained, never run.</p>
+
+<h2>Why it matters next to vCenter</h2>
+<p>vCenter tracks the equivalent drift per VM, not per fleet: the VMware Tools status column shows which VMs are running an old Tools build, and the VM hardware version shows which VMs are on an old compatibility level, both visible one VM at a time in the UI or pulled fleet-wide with a PowerCLI script you write and maintain. vSphere Lifecycle Manager adds cluster-level compliance and remediation, but it targets ESXi hosts and their image, not a per-VM helper process the way virt-launcher works. What OpenShift Virtualization has that vCenter does not is a single scrapeable, alertable number for the whole fleet, <code>kubevirt_vmi_number_of_outdated</code>, sitting in the same Prometheus every other cluster alert already comes from, plus one declarative field, <code>workloadUpdateMethods</code>, that can drain the fleet automatically once it's turned on. Said plainly: this cluster's own alert on that number hasn't fired all week, so the fair comparison here is a fleet gauge and a documented lever, not a working alarm, and that gap is exactly what this demo has to say out loud.</p>
+
+<h2>Before you start</h2>
+<p>Full prerequisites, install order, and every failure mode are in <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/0-prereqs-preflight-failure-modes.md">0-prereqs-preflight-failure-modes.md</a>. For this act specifically:</p>
+<ul>
+<li>User workload monitoring enabled, so <code>kubevirt_vmi_number_of_outdated</code> and the <code>ALERTS</code>/<code>ALERTS_FOR_STATE</code> series can be queried at all.</li>
+<li>Read access to VMIs and pods cluster-wide (<code>oc get vmi -A</code>, <code>oc get pods -A -l kubevirt.io=virt-launcher</code>) and to the HyperConverged CR in <code>openshift-cnv</code>.</li>
+<li>No demo-specific VM setup: unlike Demo 1 and Demo 2, the 21 outdated VMIs here are pre-existing workloads belonging to other users on this shared cluster, not anything this track created. <code>demo-vms</code> does not appear in the outdated list (evidence/fleet-beat/SUMMARY.md).</li>
+<li>This is a read-only track. The one command that would change cluster state, the drain patch in step 6 below, is shown for reference only and was never executed, under the same guardrail that rules out patching the HyperConverged CR on a shared cluster.</li>
+</ul>
+
+<h2>Steps</h2>
+<ol class="steps">
+<li>Query the fleet-wide gauge.
+<pre><code>kubevirt_vmi_number_of_outdated</code></pre>
+Reads 21, reported by the current virt-controller leader pod, <code>virt-controller-7b86885b64-p4m8c</code> (evidence/fleet-beat/SUMMARY.md, 01-outdated-current.json).
+</li>
+<li>Pull its 7-day history at 1-hour resolution, 2026-09-04 13:46 UTC to 2026-09-11 13:46 UTC.
+<pre><code>kubevirt_vmi_number_of_outdated
+# query_range, step=1h, start=2026-09-04T13:46:00Z, end=2026-09-11T13:46:00Z</code></pre>
+Every sample from both virt-controller replicas over that window reads 21. Flat for at least a week (02-outdated-7d-1h.json).
+</li>
+<li>List the outdated VMIs by name and namespace.
+<pre><code>oc get vmi -A -l kubevirt.io/outdatedLauncherImage</code></pre>
+Returns exactly 21 VMIs (03-outdated-vmi-full.json), matching the gauge. Grouping the namespace column gives the per-namespace counts in the table below; the grouping step itself is a plain <code>sort | uniq -c</code> over the namespace/name output, illustrative of method rather than a captured command (03-outdated-vmi-count-per-namespace.txt holds the actual counts).
+</li>
+<li>Show the two virt-launcher image digests coexisting.
+<pre><code>oc get pods -A -l kubevirt.io=virt-launcher \
+  -o custom-columns=NAMESPACE:.metadata.namespace,NAME:.metadata.name,IMAGE:.spec.containers[?(@.name=="compute")].image</code></pre>
+22 pods carry the old digest (<code>sha256:1b8b24e4...254e918c</code>), 11 carry the current one (<code>sha256:c88c03c9...ea529430e</code>), matching the CSV's <code>relatedImages</code> entry for virt-launcher (09-virt-launcher-pods-full.json, 09b-virt-launcher-image-counts.txt, 08-csv-full.json).
+</li>
+<li>Show that nothing is set up to move them.
+<pre><code>oc get hyperconverged kubevirt-hyperconverged -n openshift-cnv -o jsonpath='{.spec.workloadUpdateStrategy}'</code></pre>
+Returns <code>batchEvictionInterval: 10m0s</code>, <code>batchEvictionSize: 1</code>, <code>workloadUpdateMethods: []</code> (07-hyperconverged-full.json). An empty method list means HCO will never migrate or evict a single one of the 21 on its own.
+</li>
+<li>Show the patch that would drain them. Documented only, not run on this cluster.
+<pre><code>oc patch hco kubevirt-hyperconverged -n openshift-cnv --type=merge \
+  -p '{"spec":{"workloadUpdateStrategy":{"workloadUpdateMethods":["LiveMigrate"]}}}'</code></pre>
+This would batch-migrate outdated, migratable VMIs one every 10 minutes under the CR's current <code>batchEvictionSize</code>/<code>batchEvictionInterval</code>. VMIs that cannot live-migrate need <code>Evict</code> added to the same list too, a real interruption, not a migration, which is why it is not on by default (12-patch-NOT-RUN-drain-outdated.txt). This is a cluster-wide field in <code>openshift-cnv</code>, not the demo's own namespace, and touches 21 VMIs belonging to other users, which is why this step is shown and not executed.
+</li>
+<li>Check the alert's own state, then check why it never moves.
+<pre><code>ALERTS{alertname="OutdatedVirtualMachineInstanceWorkloads"}
+ALERTS_FOR_STATE{alertname="OutdatedVirtualMachineInstanceWorkloads"}
+oc get pods -n openshift-cnv -l kubevirt.io=virt-controller</code></pre>
+The alert is <code>pending</code>, not firing, severity <code>warning</code> (04/05 files). The two virt-controller pods have restarted 106 and 105 times respectively over a 30-day pod age (06d-virt-controller-pods.txt); the crash log shows a leader-election lease-renewal timeout followed by <code>leaderelection lost</code> (06e-virt-controller-p4m8c-full.json). A 7-day range query on <code>ALERTS_FOR_STATE</code> shows the alert's pending-since timestamp has reset 36 times across both replicas in that window (10-ALERTS_FOR_STATE-7d-history.json, 11-pending-resets-analysis.txt).
+</li>
+</ol>
+
+<h2>What you will see</h2>
+<p>No screenshots exist for this act; every figure below is a table straight from the evidence files.</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>Query</th><th>Result</th><th>Evidence file</th></tr></thead>
+<tbody>
+<tr><td>kubevirt_vmi_number_of_outdated, instant</td><td>21</td><td>evidence/fleet-beat/SUMMARY.md, 01-outdated-current.json</td></tr>
+<tr><td>Same metric, 7-day range, step 1h</td><td>constant 21 across the entire window, both replicas</td><td>02-outdated-7d-1h.json</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Namespace</th><th>Outdated VMIs</th><th>Evidence file</th></tr></thead>
+<tbody>
+<tr><td>aap-edb-vms</td><td>6</td><td>03-outdated-vmi-count-per-namespace.txt</td></tr>
+<tr><td>anaeem</td><td>5</td><td>same file</td></tr>
+<tr><td>joon</td><td>4</td><td>same file</td></tr>
+<tr><td>hammer</td><td>3</td><td>same file</td></tr>
+<tr><td>shannon</td><td>1</td><td>same file</td></tr>
+<tr><td>default</td><td>1</td><td>same file</td></tr>
+<tr><td>asaran</td><td>1</td><td>same file</td></tr>
+<tr><td><strong>Total</strong></td><td><strong>21</strong></td><td>03-outdated-vmi-full.json</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Breaking every virt-launcher pod cluster-wide down by image digest and phase reconciles the full picture: 21 of the 22 old-digest pods are the Running, outdated VMIs from the table above; the 22nd is a leftover Succeeded source pod from an already-completed migration, pending garbage collection.</p>
+
+<div class="tw">
+<table>
+<thead><tr><th></th><th>Old digest (1b8b24e...)</th><th>New digest (c88c03c...)</th><th>Total</th></tr></thead>
+<tbody>
+<tr><td>Running (live VMIs)</td><td>21</td><td>10</td><td>31</td></tr>
+<tr><td>Succeeded (leftover post-migration pods, pending GC)</td><td>1 (posthog, ns anaeem)</td><td>1 (vm-demo, ns demo-vms)</td><td>2</td></tr>
+<tr><td><strong>Total pods</strong></td><td><strong>22</strong></td><td><strong>11</strong></td><td><strong>33</strong></td></tr>
+</tbody>
+</table>
+</div>
+<p class="meta">Evidence: 09-virt-launcher-pods-full.json, 09b-virt-launcher-image-counts.txt, 09c-all-vmi-full.json.</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>Field</th><th>Value</th><th>Evidence file</th></tr></thead>
+<tbody>
+<tr><td>workloadUpdateMethods</td><td>[] (empty list)</td><td>07-hyperconverged-full.json</td></tr>
+<tr><td>batchEvictionInterval</td><td>10m0s</td><td>same file</td></tr>
+<tr><td>batchEvictionSize</td><td>1</td><td>same file</td></tr>
+<tr><td>Installed CSV</td><td>kubevirt-hyperconverged-operator.v4.20.24, phase Succeeded</td><td>08-csv-full.json</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Field</th><th>Value</th><th>Evidence file</th></tr></thead>
+<tbody>
+<tr><td>alertstate</td><td>pending</td><td>04-ALERTS-outdated-vmi-workloads.json</td></tr>
+<tr><td>severity</td><td>warning</td><td>same file</td></tr>
+<tr><td>Pending since</td><td>2026-09-11T13:45:44Z</td><td>05-ALERTS_FOR_STATE-outdated-vmi-workloads.json</td></tr>
+<tr><td>expr</td><td>kubevirt_vmi_number_of_outdated != 0</td><td>06-rules-full.json, 06b-rule-OutdatedVMIWorkloads-extract.json</td></tr>
+<tr><td>for</td><td>86400s (24h)</td><td>same file</td></tr>
+<tr><td>virt-controller restarts, p4m8c / zxd9s</td><td>106 / 105, over 30-day pod age</td><td>06d-virt-controller-pods.txt</td></tr>
+<tr><td>Crash reason</td><td>leaderelection.go:429 lease-renewal timeout, then "leaderelection lost"</td><td>06e-virt-controller-p4m8c-full.json</td></tr>
+<tr><td>Pending-timer resets, 7 days</td><td>36, about once every 4-5 hours</td><td>10-ALERTS_FOR_STATE-7d-history.json, 11-pending-resets-analysis.txt</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="warn">
+<p>Do not promise this alert will reach Firing on a fixed schedule. The naive read of "pending since 13:45:44Z today" says Firing at 2026-09-12T13:46 UTC, but the condition has actually been true, unbroken, for at least 7 days already, and the timer has reset 36 times in that window without ever getting close. If the virt-controller crash-loop is fixed, expect Firing about 24 hours after that fix, not before, and not on the schedule the current pending timestamp alone implies. Demo the gauge and the label query as the reliable signals; treat the alert as a live illustration of why an alert can be true and silent at the same time.</p>
+</div>
+
+<h2>What can go wrong</h2>
+<p>The full 14-row failure-mode table is in <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/0-prereqs-preflight-failure-modes.md">0-prereqs-preflight-failure-modes.md</a>. The ones that actually hit this act:</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>Symptom</th><th>Root cause</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td>The 24-hour outdated-workloads alert never reaches Firing, in either direction of the demo</td><td>The alert's own <code>for: 24h</code> clause means it cannot fire within a live session even when staged a day ahead; on this cluster it additionally never fires at all in practice, because both virt-controller replicas restart on leader-election lease-renewal failures and every restart resets the 24h pending timer (confirmed live: 106 and 105 restarts, 36 timer resets in 7 days)</td><td>Never wait for the alert, here or on any other cluster. Graph <code>kubevirt_vmi_number_of_outdated</code> and run <code>oc get vmi -A -l kubevirt.io/outdatedLauncherImage</code> instead; call the alert a 24-hours-later escalation that this cluster's controller instability keeps resetting, not a broken feature.</td></tr>
+<tr><td>A merge-patch against the HyperConverged CR looks like it worked but the field silently stays unset</td><td><code>hco.kubevirt.io</code> serves two API layouts: <code>v1beta1</code> puts <code>workloadUpdateStrategy</code> at the top of <code>spec</code> (what this cluster uses and what Red Hat's docs show for 4.9-4.21); <code>v1</code> nests it under <code>spec.virtualization</code>. A patch shaped for the wrong layout is silently pruned</td><td>Check <code>oc get hyperconverged kubevirt-hyperconverged -n openshift-cnv -o jsonpath='{.apiVersion}'</code> before writing any patch, and use the matching path. This cluster confirmed <code>v1beta1</code>, the top-level layout shown in step 5 and 6 above.</td></tr>
+<tr><td>batchEvictionSize/batchEvictionInterval look like they should pace the drain, but a live-migratable VM rolls over instantly once workloadUpdateMethods is turned on</td><td>Those two fields apply only to the <code>Evict</code> method, never to <code>LiveMigrate</code>, which is what actually moves the 21 outdated-but-migratable VMIs here</td><td>Don't promise a paced rollout for the migratable majority of this fleet; the pacing only matters for the subset that would need <code>Evict</code> (non-migratable outdated VMIs, none of which are in this list).</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Status</h2>
+<ul>
+<li><strong>GA:</strong> <code>kubevirt_vmi_number_of_outdated</code>, the <code>OutdatedVirtualMachineInstanceWorkloads</code> alert rule, and the HyperConverged <code>workloadUpdateStrategy</code>/<code>workloadUpdateMethods</code> field.</li>
+<li><strong>Working as designed, on this cluster:</strong> the gauge and the label query, both confirmed accurate and stable for 7 straight days.</li>
+<li><strong>Not doing anything on its own:</strong> <code>workloadUpdateMethods</code> is an empty list on this cluster, so none of the 21 outdated VMIs will move without the patch in step 6, which was never run.</li>
+<li><strong>Stuck, on this cluster specifically:</strong> the alert has been Pending, not Firing, for at least 7 days, because both virt-controller replicas keep restarting on leader-election failures and resetting the alert's 24-hour timer. This is a property of this cluster's controller stability, not of the alert rule itself.</li>
+</ul>
+
+<h2>Read more</h2>
+<ul>
+<li>Full write-up, the exact HCO patch commands for both API layouts, and the reasoning behind why the alert-to-VMI walk cannot resolve from this metric: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/2-act2-correlation.md">2-act2-correlation.md</a></li>
+<li>Prerequisites, install order, and the full failure-mode table: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/0-prereqs-preflight-failure-modes.md">0-prereqs-preflight-failure-modes.md</a></li>
+<li>Raw evidence for every number on this page: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/fleet-beat/SUMMARY.md">evidence/fleet-beat/SUMMARY.md</a></li>
+<li>Where this sits in the wider system: <a href="reference-architecture.html">reference architecture</a></li>
+</ul>
+
+</main>
+<footer><div class="shell">Numbers on this site come from a live run on 2026-09-11 (OpenShift 4.20.32, OpenShift Virtualization 4.20.24, Cluster Observability Operator 1.5.2). Every figure names the evidence file it came from. Source: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo">github.com/naeemarsalan/ocp-virt-observability-demo</a>.</div></footer>
+</body>
+</html>

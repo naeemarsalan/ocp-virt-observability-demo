@@ -398,7 +398,7 @@
       b: 'Korrel8r exposes the same engine over MCP. An agent calls create_goals_graph with the alert as the start and gets back node classes with counts, then get_objects for the pod or the log lines. It follows rules; it does not guess. Upstream 0.12.1, experimental.',
       hot: ['b-agent', 'b-k8r', 'b-graph'], flows: [['f-mcp', false]], alerts: 1, nodes: 8, series: 296, logs: 100, nflows: 1, time: '6.8 s', ghosts: ALL },
     { t: 'Check the engine version before you promise the walk',
-      b: 'The GA Cluster Observability Operator 1.5.2 ships korrel8r 0.11.1: 47 rules, four of them for KubeVirt (VmToVmi, VmiToPod, VmiToNode, VmToPVC). VMI to pod to logs, metrics and flows works when you type the VMI query into the panel\'s editor (Focus is disabled on the VM, VMI and pod pages in this build). AlertToVMI and VmiToLogs need 0.12.1 (104 rules, 30 for KubeVirt). Patching the operator\'s config by hand is reverted within two minutes.',
+      b: 'The GA Cluster Observability Operator 1.5.2 ships korrel8r 0.11.1: 47 rules, four of them for KubeVirt (VmToVmi, VmiToPod, VmiToNode, VmToPVC). VMI to pod to logs, metrics and flows works when you type the VMI query into the panel\'s editor (Focus is disabled on the VM, VMI and pod pages in this build). AlertToVMI and VmiToLogs need 0.12.1 (104 rules, 37 for KubeVirt). Patching the operator\'s config by hand is reverted within two minutes.',
       hot: ['b-k8r'], flows: [], alerts: 1, nodes: 8, series: 296, logs: 100, nflows: 1, time: '6.8 s', ghosts: ALL }
   ];
   // ===== KEEP: player machinery — identical in every generated page =====

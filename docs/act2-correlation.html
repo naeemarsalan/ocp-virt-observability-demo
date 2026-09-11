@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alert to Log Line</title>
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<header class="top"><div class="shell">
+  <a class="brand" href="index.html">OpenShift Virtualization observability demo</a>
+  <nav>
+    <a href="index.html">Overview</a>
+    <a href="act1-depth.html">1 Depth</a>
+    <a href="act2-correlation.html" aria-current="page">2 Correlation</a>
+    <a href="act2b-fleet.html">2b Fleet</a>
+    <a href="act3-agentic.html">3 Agentic</a>
+    <a href="reference-architecture.html">Reference architecture</a>
+    <a href="evidence.html">Evidence</a>
+    <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo">GitHub</a>
+  </nav>
+</div></header>
+<main class="shell">
+
+<p class="kicker">Demo 2 of 4</p>
+<h1>Alert to Log Line</h1>
+<p class="lead">This demo fires a real VMCannotBeEvicted alert on a VM that cannot live-migrate, then asks the Troubleshooting Panel to walk from that alert to the VM, its pod, its logs and its network flows, first on the korrel8r build OpenShift Virtualization ships today, then on the newer build running next to it. The one thing to take from the room: on the shipped engine that walk cannot even start from the alert, on the same cluster with a newer korrel8r image it takes 6.8 seconds end to end.</p>
+<p class="meta"><span>vm-non-migratable, namespace demo-vms</span><span>Cluster Observability Operator 1.5.2, korrel8r 0.11.1</span><span>upstream korrel8r 0.12.1 side by side</span><span>live run 2026-09-11</span></p>
+
+<div class="status">
+  <span class="ga">Troubleshooting Panel, COO 1.5.2: GA</span>
+  <span class="ga">korrel8r 0.11.1 VMI-to-pod-to-logs walk: GA</span>
+  <span class="up">Alert-to-VMI, VMI-to-logs rules (korrel8r 0.11.4+): upstream, not in this image</span>
+  <span>Upstream korrel8r 0.12.1 REST goals walk: experimental, deployed side by side in demo-vms</span>
+</div>
+
+<h2>What this demo shows</h2>
+<p>Create <code>vm-non-migratable</code> in <code>demo-vms</code> with a ReadWriteOnce block disk and <code>evictionStrategy: LiveMigrate</code>. The disk can't be shared, so KubeVirt sets <code>kubevirt_vmi_non_evictable</code> to 1 and <code>VMCannotBeEvicted</code> fires about a minute later, a genuine, unmodified alert with a 1 minute <code>for</code>. Confirmed live: the VMI reached Running at 13:06:16Z, the alert first fired at 13:13:14Z, resolved briefly, then fired again at 13:24:44Z (evidence/demo-vms/SUMMARY.md, evidence/korrel8r-0.12/SUMMARY.md, reference-architecture.html). Show the dead end first: KubeVirt Top Consumers lists the VM by name with nothing to click through to its pod, the same gap Demo 1 flags (evidence/screenshots/SCREENSHOTS.md).</p>
+<p>Open the Troubleshooting Panel (Application launcher, Signal Correlation) and paste the VMI's own korrel8r query into the Start Query box, Neighbours, 3 hops. On the shipped korrel8r 0.11.1 that reaches 12 node classes, VM down to Application logs (evidence/screenshots/SCREENSHOTS.md). Paste the alert's own query in instead and the same engine reaches only Alert and Metric, because <code>AlertToVMI</code> is not compiled into this build (evidence/troubleshooting-panel/SUMMARY.md). Run both queries against the upstream korrel8r 0.12.1 instance next to it, over its REST goals endpoint, and the alert query alone reaches VM, VMI, Pod, three Nodes, metric and log data in 6.8 seconds; the VMI query adds PVC, alert and netflow in 15.3 seconds (full counts in the tables below, evidence/korrel8r-0.12/SUMMARY.md, reference-architecture.html).</p>
+
+<h2>Why it matters next to vCenter</h2>
+<p>In vCenter, a VM's alarms already roll up against its host, cluster and datastore, because vCenter's inventory is a real, owned object tree, not a label join, so an alarm shows related context with no extra tooling. Aria Operations goes further, layering dynamic-threshold correlation and its own troubleshooting workbench on that tree, a more polished, more turnkey experience today than a rules engine that, on the build most customers run on day one, cannot walk from a firing alert to the VM at all.</p>
+<p>Say that plainly before anyone has to ask: the GA Cluster Observability Operator ships korrel8r 0.11.1, and on this cluster the Alert to VM, Alert to VMI, VM to Alert, VMI to Alert and VMI to Logs rules simply are not in it (evidence/troubleshooting-panel/SUMMARY.md). What the walk buys once those rules exist is not a nicer picture than Aria's, it is that the same graph also reaches things Aria never sees, an arbitrary pod label, an OVN network flow, a Loki log line in a different namespace, through the same open rule mechanism every other object type in the cluster already uses. The claim for today is narrower: the VMI-to-pod-to-logs-to-flows leg already works on the shipped engine; the alert-to-VMI leg needs korrel8r 0.11.4 or newer, which the upstream 0.12.1 instance here demonstrates.</p>
+
+<h2>Before you start</h2>
+<p>Full prerequisites, install order, and every failure mode are in <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/0-prereqs-preflight-failure-modes.md">0-prereqs-preflight-failure-modes.md</a>. For this act specifically:</p>
+<ul>
+<li>The <code>demo-vms</code> namespace and a StorageClass that can provision ReadWriteOnce, so the disk forces <code>LiveMigratable=False</code> regardless of backend.</li>
+<li>The TroubleshootingPanel UIPlugin installed with <code>Available=True</code>. GA only from COO 1.3 on OpenShift 4.19+ (reference-architecture.html); confirm the minimum supported OpenShift version before the demo, it is not available on every earlier release.</li>
+<li>LokiStack Ready in <code>openshift-logging</code> and Network Observability's own LokiStack Ready in <code>netobserv</code>, so the log and netflow domains have somewhere to query. Korrel8r doesn't error on a missing one, it silently omits the node.</li>
+<li>Run <code>korrel8r rules --config=/config/korrel8r.yaml -n '(Vm|Vmi|Vmim|Alert)' --long</code> inside the pod days ahead, not hours ahead. Whether Alert to VMI exists depends on the pinned image tag, not anything visible in a ConfigMap.</li>
+<li>For the upstream comparison, that instance's own route and a bearer token (<code>$(oc whoami -t)</code>).</li>
+</ul>
+
+<h2>Steps</h2>
+<ol class="steps">
+<li>Create the non-migratable VM.
+<pre><code>oc apply -f act2-02-recipe-a-vmcannotbeevicted.yaml
+oc wait vmi/vm-non-migratable -n demo-vms --for=jsonpath='{.status.phase}'=Running --timeout=180s
+oc get vmi vm-non-migratable -n demo-vms -o wide   # LIVE-MIGRATABLE column reads False</code></pre>
+The manifest sets <code>accessModes: ["ReadWriteOnce"]</code> on the DataVolumeTemplate and <code>evictionStrategy: LiveMigrate</code> (not <code>LiveMigrateIfPossible</code>) on the template spec, the two settings that force the block (evidence/demo-vms/SUMMARY.md).
+</li>
+<li>Watch <code>VMCannotBeEvicted</code> fire. Console: Observe, Alerting, Alerts. Set Project to All Projects first, this page shows nothing against the last-used project otherwise. Filter by alert name VMCannotBeEvicted, state Firing, and click the instance for <code>demo-vms/vm-non-migratable</code>.
+</li>
+<li>Show the dead end. Console: Observe, Dashboards, KubeVirt, Top Consumers. Switch the table to By VM, point at <code>vm-non-migratable</code>. There is nothing to click from the VM name to its pod, the pod carries only a label back to the VMI, not an ownerReference.
+</li>
+<li>Open the panel and paste the VMI query. Console: Application launcher (grid icon, top right), Signal Correlation. Click the expand chevron next to the time-range dropdown, a Start Query box appears with the placeholder <code>domain:class:selector</code>.
+<pre><code>k8s:VirtualMachineInstance.v1.kubevirt.io:{"namespace":"demo-vms","name":"vm-non-migratable"}</code></pre>
+Leave Search Type on Neighbours, 3 hops, and click Search.
+</li>
+<li>Paste the alert query into the same panel instead.
+<pre><code>alert:alert:{"alertname":"VMCannotBeEvicted","namespace":"demo-vms","name":"vm-non-migratable"}</code></pre>
+Click Search again. Same engine, same panel, a much smaller graph, this is the gap the rest of the demo explains.
+</li>
+<li>Run the same two queries against the upstream 0.12.1 engine, over its REST goals endpoint.
+<pre><code>curl -sk -X POST "https://&lt;cluster-domain&gt;/api/v1alpha1/graphs/goals" \
+  -H "Authorization: Bearer $(oc whoami -t)" -H "Content-Type: application/json" \
+  -d '{"start":{"queries":["alert:alert:{\"alertname\":\"VMCannotBeEvicted\",\"namespace\":\"demo-vms\",\"name\":\"vm-non-migratable\"}"]},
+       "goals":["k8s:VirtualMachineInstance.v1.kubevirt.io","k8s:Pod.v1","log:application","netflow:network","metric:metric","k8s:Node.v1"]}'
+
+curl -sk -X POST "https://&lt;cluster-domain&gt;/api/v1alpha1/graphs/goals" \
+  -H "Authorization: Bearer $(oc whoami -t)" -H "Content-Type: application/json" \
+  -d '{"start":{"queries":["k8s:VirtualMachineInstance.v1.kubevirt.io:{\"namespace\":\"demo-vms\",\"name\":\"vm-non-migratable\"}"]},
+       "goals":["k8s:Pod.v1","log:application","netflow:network","metric:metric","k8s:Node.v1","alert:alert","k8s:PersistentVolumeClaim.v1"]}'</code></pre>
+Each response's <code>nodes</code> array carries one entry per class reached with its own query string and result count, and <code>edges</code> names the rule that connects each pair (evidence/korrel8r-0.12/SUMMARY.md, goals-alert-to-all.json, goals-vmi-to-all.json).
+</li>
+</ol>
+
+<h2>What you will see</h2>
+
+<figure>
+  <img src="img/console-dashboard-kubevirt-top-consumers.png" alt="Observe, Dashboards, KubeVirt Top Consumers listing VM names as plain text with no link to their pods">
+  <figcaption>The dead end: KubeVirt Top Consumers, VM names are text, not links.</figcaption>
+</figure>
+<figure>
+  <img src="img/console-alerting-all-projects.png" alt="Observe, Alerting with the project selector set to All Projects, showing the firing VMCannotBeEvicted alert">
+  <figcaption>Observe, Alerting, Project set to All Projects. It shows nothing otherwise.</figcaption>
+</figure>
+<figure>
+  <img src="img/console-panel-pod-page-focus-disabled.png" alt="The Troubleshooting Panel opened from the virt-launcher pod's details page with Focus greyed out and the message No starting point for correlation">
+  <figcaption>Focus, greyed out, opened from the pod's own details page. The same happens on the VM and VMI pages.</figcaption>
+</figure>
+<figure>
+  <img src="img/console-panel-query-editor-VMI.png" alt="The Troubleshooting Panel query editor opened with the expand chevron, showing the domain:class:selector placeholder">
+  <figcaption>The workaround: the panel's own query editor, opened with the expand chevron next to the time range.</figcaption>
+</figure>
+<figure>
+  <img src="img/console-panel-graph-from-VMI-korrel8r-0.11.1.png" alt="The Troubleshooting Panel graph drawn from the VMI query, showing VirtualMachine, Pod, Node, PVC, PersistentVolume, StorageClass, DataVolume, Events, Metric, Network and Application log nodes">
+  <figcaption>From the VMI query: 12 node classes, on the korrel8r 0.11.1 this cluster ships.</figcaption>
+</figure>
+<figure>
+  <img src="img/console-panel-graph-from-alert-korrel8r-0.11.1.png" alt="The Troubleshooting Panel graph drawn from the VMCannotBeEvicted alert query, showing only Alert and Metric nodes">
+  <figcaption>From the alert query, same panel, same engine: Alert and Metric only.</figcaption>
+</figure>
+<figure>
+  <img src="img/console-panel-broken-by-custom-rule-experiment.png" alt="The Troubleshooting Panel showing a search error, invalid rule AlertToVMI, function required not defined">
+  <figcaption>What happened when 0.12-style rules were pasted into the operator's own ConfigMap. Do not try this live.</figcaption>
+</figure>
+
+<div class="tw">
+<table>
+<thead><tr><th>Query, shipped korrel8r 0.11.1</th><th>Node classes reached</th><th>Evidence file</th></tr></thead>
+<tbody>
+<tr><td>VMI query, Neighbours, 3 hops</td><td>VMI, VM, Pod, Node, PVC, PersistentVolume, StorageClass, DataVolume, 5 Events, 248 of 263 Metric, 2 of 3 Network, 1000 Application log lines (12 classes)</td><td>evidence/screenshots/SCREENSHOTS.md</td></tr>
+<tr><td>Alert query, same panel</td><td>Alert and 128 Metric series only</td><td>evidence/screenshots/SCREENSHOTS.md, evidence/troubleshooting-panel/SUMMARY.md</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Starting point, upstream korrel8r 0.12.1, REST goals</th><th>Classes reached</th><th>Time</th><th>Evidence file</th></tr></thead>
+<tbody>
+<tr><td>Alert (VMCannotBeEvicted)</td><td>VM 1, VMI 1, Pod 1, Node 3, metric 296 (3 queries), log 200 (2 queries of 100)</td><td>6.8 s</td><td>evidence/korrel8r-0.12/SUMMARY.md, goals-alert-to-all.json, reference-architecture.html</td></tr>
+<tr><td>VMI (vm-non-migratable)</td><td>adds PVC 1, alert 1, netflow 1 (one NTP flow, UDP 123, 90 bytes, to 212.71.233.40), metric climbs to 312 (4 queries)</td><td>15.3 s</td><td>evidence/korrel8r-0.12/SUMMARY.md, goals-vmi-to-all.json, objects-netflow.json, reference-architecture.html</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="tw">
+<table>
+<thead><tr><th>Build</th><th>Total rules</th><th>KubeVirt-specific rules</th><th>Evidence file</th></tr></thead>
+<tbody>
+<tr><td>Shipped, COO 1.5.2 (korrel8r 0.11.1)</td><td>47</td><td>4: VmToVmi, VmiToPod, VmiToNode, VmToPVC</td><td>evidence/troubleshooting-panel/SUMMARY.md, rules-all.txt</td></tr>
+<tr><td>Upstream (korrel8r 0.12.1)</td><td>104</td><td>30</td><td>evidence/korrel8r-0.12/SUMMARY.md, rules-count.txt, reference-architecture.html</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="warn">
+<p>Tried live, worth saying out loud rather than skipping: pasting <code>AlertToVMI</code> and <code>VmiToLogs</code> rules written in the 0.12 syntax into the operator's own korrel8r ConfigMap was reverted by the Cluster Observability Operator in under two minutes, and while the patched config was live it broke the panel outright, "Search Error: invalid rule AlertToVMI: function \"required\" not defined", because 0.11.1 lacks the template function the newer syntax uses. It needed a pod restart to come back clean. Not a fallback to demo live, it's proof the rule mechanism is a plain, extensible ruleset and that the real fix for the missing rules is a newer korrel8r image (evidence/troubleshooting-panel/SUMMARY.md, custom-rule-experiment-outcome.txt).</p>
+</div>
+
+<h2>What can go wrong</h2>
+<p>The full 14-row failure-mode table is in <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/0-prereqs-preflight-failure-modes.md">0-prereqs-preflight-failure-modes.md</a>. The ones that actually hit this act:</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>Symptom</th><th>Root cause</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td>Focus is greyed out on the VM, VMI and Pod detail pages, "No starting point for correlation"</td><td>This build's Focus implementation does not construct a starting query from those pages</td><td>Type the korrel8r query directly into the panel's own query editor, it works from any page. Focus does work from the Alerting list.</td></tr>
+<tr><td>Observe, Alerting shows nothing</td><td>The Alerting page defaults to the last-used project, not All Projects</td><td>Set Project to All Projects before filtering by alert name.</td></tr>
+<tr><td>The graph from the alert query stops at Alert and Metric, no VMI, pod or logs</td><td>AlertToVMI, VmiToAlert, VmToAlert, AlertToVM and VmiToLogs are not compiled into korrel8r 0.11.1</td><td>Start from the VMI query instead for the shipped build, or point the audience at the upstream 0.12.1 REST walk for the alert-first version.</td></tr>
+<tr><td>A log or netflow node is silently missing from the graph, no error shown</td><td>LokiStack or Network Observability's LokiStack is absent or not Ready; korrel8r doesn't error on a missing store, it just has nothing to draw</td><td>Confirm both stacks' pods are Ready before the walk, not during it.</td></tr>
+<tr><td>Pasting newer rules into the operator's korrel8r ConfigMap breaks the panel</td><td>korrel8r 0.11.1 lacks the template function the 0.12-style rule syntax needs, and the operator reverts the ConfigMap within about two minutes anyway</td><td>Don't patch rules live. The only real fix for the missing rules is a newer korrel8r image.</td></tr>
+<tr><td>The Troubleshooting Panel isn't in the console at all</td><td>It is GA only from COO 1.3 on OpenShift 4.19+ (reference-architecture.html)</td><td>Confirm both the COO version and the OCP version before the demo, not just the UIPlugin's presence.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Status</h2>
+<ul>
+<li><strong>GA:</strong> the COO 1.5.2 Troubleshooting Panel UIPlugin, and korrel8r 0.11.1's own VmToVmi, VmiToPod, VmiToNode, VmToPVC, plus the generic PodToLogs, PodToAlert, PodToNode, K8sSrcToNetflow and AllToMetric that carry the walk once it starts from a Kubernetes object.</li>
+<li><strong>Upstream, not in this image:</strong> AlertToVM, AlertToVMI, VmToAlert, VmiToAlert and VmiToLogs, shipped in korrel8r 0.11.4 and recompiled in 0.12.1, the build running alongside this cluster (104 rules total, 37 KubeVirt-specific, evidence/korrel8r-0.12/SUMMARY.md, rules-count.txt, reference-architecture.html).</li>
+<li><strong>Experimental:</strong> the REST goals walk and any panel pointed at that upstream instance, a separate deployment run side by side, not the shipped console experience.</li>
+<li><strong>Not a supported live fix:</strong> patching the operator's own korrel8r ConfigMap. It reverts in about two minutes and, until the pod restarts, breaks the panel outright (evidence/troubleshooting-panel/SUMMARY.md, custom-rule-experiment-outcome.txt).</li>
+</ul>
+
+<h2>Read more</h2>
+<ul>
+<li>Full write-up with every recipe, trap and click path: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/2-act2-correlation.md">2-act2-correlation.md</a></li>
+<li>Prerequisites, install order, and the full failure-mode table: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/0-prereqs-preflight-failure-modes.md">0-prereqs-preflight-failure-modes.md</a></li>
+<li>Raw evidence for every number on this page: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/troubleshooting-panel/SUMMARY.md">evidence/troubleshooting-panel/SUMMARY.md</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/korrel8r-0.12/SUMMARY.md">evidence/korrel8r-0.12/SUMMARY.md</a> and <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/screenshots/SCREENSHOTS.md">evidence/screenshots/SCREENSHOTS.md</a></li>
+<li>Where this sits in the wider system: <a href="reference-architecture.html">reference architecture</a></li>
+</ul>
+
+</main>
+<footer><div class="shell">Numbers on this site come from a live run on 2026-09-11 (OpenShift 4.20.32, OpenShift Virtualization 4.20.24, Cluster Observability Operator 1.5.2). Every figure names the evidence file it came from. Source: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo">github.com/naeemarsalan/ocp-virt-observability-demo</a>.</div></footer>
+</body>
+</html>

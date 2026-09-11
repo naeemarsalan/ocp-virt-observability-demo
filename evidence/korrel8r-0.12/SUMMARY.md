@@ -14,7 +14,7 @@ Configuration and deployment details are captured in YAML manifests for the serv
 | deploy.yaml | Deployment manifest with service account, service, and route | Korrel8r running on port 8080 in demo-vms namespace with resource limits (250m CPU request, 4Gi memory limit) |
 | rbac.yaml | ClusterRoleBinding for auth-delegator | Service account korrel8r-demo granted permission to delegate authentication |
 | rules-count.txt | Total number of correlation rules | 104 rules defined to correlate KubeVirt objects with observables |
-| rules-kubevirt.txt | List of all defined correlation rules | 36 unique rule definitions linking VMs, VMIs, migrations, storage, snapshots, and exports to metrics, alerts, logs, and infrastructure |
+| rules-kubevirt.txt | List of all defined correlation rules | 37 unique rule definitions linking VMs, VMIs, migrations, storage, snapshots, and exports to metrics, alerts, logs, and infrastructure |
 | domains.json | API response listing available correlation domains | Seven domains active: alert, incident, k8s, log, metric, netflow, trace (each with Thanos, Loki, or Tempo backend URLs) |
 | goals-request.json | Query from alert VMCannotBeEvicted to infrastructure | Starting from alert, goals include VMI, pod, logs, netflow, metrics, node (7 traversal targets) |
 | goals-from-vmi.json | Query from VMI vm-non-migratable to all signals | Starting from VMI, goals include pod, logs, netflow, metrics, node, alert, PVC (7 traversal targets) |

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evidence Index</title>
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<header class="top"><div class="shell">
+  <a class="brand" href="index.html">OpenShift Virtualization observability demo</a>
+  <nav>
+    <a href="index.html">Overview</a>
+    <a href="act1-depth.html">1 Depth</a>
+    <a href="act2-correlation.html">2 Correlation</a>
+    <a href="act2b-fleet.html">2b Fleet</a>
+    <a href="act3-agentic.html">3 Agentic</a>
+    <a href="reference-architecture.html">Reference architecture</a>
+    <a href="evidence.html" aria-current="page">Evidence</a>
+    <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo">GitHub</a>
+  </nav>
+</div></header>
+<main class="shell">
+
+<p class="kicker">Evidence</p>
+<h1>Every number, and the file it came from</h1>
+<p class="lead">Every figure on this site was pulled from a live cluster during the 2026-09-11 run and saved as a raw file, JSON result, YAML manifest, log excerpt or screenshot, in one of the directories below. Node names, routes and other tenants' workload names were scrubbed before these files were committed, replaced with <code>&lt;cluster-domain&gt;</code> wherever a real hostname would appear. Everything lives in the repository under <code>evidence/</code>, so any claim on the site can be checked against the file it names.</p>
+<p class="meta"><span>13 evidence directories</span><span>run 2026-09-11</span><span>OpenShift 4.20.32, OpenShift Virtualization 4.20.24, COO 1.5.2</span></p>
+
+<h2>act1-metrics</h2>
+<p>vm-demo alone exposes 61 <code>kubevirt_vmi_*</code> series, 72 with VM-object series added, and the join through the virt-launcher pod's <code>kube_pod_labels</code> reaches 345, inflated right now by a leftover pod from a migration running mid-query (act1-metrics/SUMMARY.md). Two recording rules assumed to exist, <code>vmi:kubevirt_vmi_vcpu:count</code> and <code>namespace:kubevirt_vm:sum</code>, don't exist on this build; the raw metrics <code>kubevirt_vmi_vcpu_count</code> and <code>count by (namespace)(kubevirt_vmi_info)</code> stand in instead. Cluster-wide: 144 distinct <code>kubevirt_*</code> metric names, 3,068 <code>kubevirt_vmi_*</code> series.</p>
+<p>Detail: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/act1-metrics/SUMMARY.md">SUMMARY.md</a>. Key files: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/act1-metrics/01-count-vmi-only.json">01-count-vmi-only.json</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/act1-metrics/03f-count-full-join-WORKING-and-based-equivalent.json">03f-count-full-join-WORKING-and-based-equivalent.json</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/act1-metrics/m02-total-distinct-kubevirt-metric-name-count.json">m02-total-distinct-kubevirt-metric-name-count.json</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/act1-metrics/p13d-allocated-vcpus-CORRECTED-metric-name.json">p13d-allocated-vcpus-CORRECTED-metric-name.json</a>.</p>
+
+<h2>act1-migration</h2>
+<p>A single <code>virtctl migrate vm-demo</code> run took 47 seconds end to end; only the last 14 seconds were the actual memory copy, moving about 849 MiB out of vm-demo's 4.02 GiB of guest memory (act1-migration/SUMMARY.md). The one transfer-rate sample, 466,555,260 bytes/sec (about 445 MiB/s), is a single scrape, not a measured peak: the copy phase finished faster than the scrape interval. The p50/p95 histogram queries return NaN because this virt-controller pod has only ever recorded one migration; the real duration comes from the raw sum/count pair, 47 seconds.</p>
+<p>Detail: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/act1-migration/SUMMARY.md">SUMMARY.md</a>. Key files: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/act1-migration/timeline.csv">timeline.csv</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/act1-migration/vmim-final.yaml">vmim-final.yaml</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/act1-migration/disk_transfer_rate_bytes.json">disk_transfer_rate_bytes.json</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/act1-migration/histogram_p50.json">histogram_p50.json</a>.</p>
+
+<h2>fleet-beat</h2>
+<p><code>kubevirt_vmi_number_of_outdated</code> reads 21 and has held flat at 21 for a full 7-day window (fleet-beat/SUMMARY.md). The <code>OutdatedVirtualMachineInstanceWorkloads</code> alert is pending, not firing: both virt-controller replicas are crash-looping on leader election, 106 and 105 restarts each over 30 days, and every flip resets the alert's 24-hour timer, so it likely never got close to firing despite the condition holding all week. <code>workloadUpdateMethods</code> on the HyperConverged CR is an empty list, so nothing moves these VMIs automatically; the fix was written down but deliberately not run, since it touches seven other tenants' namespaces (fleet-beat/SUMMARY.md).</p>
+<p>Detail: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/fleet-beat/SUMMARY.md">SUMMARY.md</a>. Key files: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/fleet-beat/01-outdated-current.json">01-outdated-current.json</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/fleet-beat/02-outdated-7d-1h.json">02-outdated-7d-1h.json</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/fleet-beat/06d-virt-controller-pods.txt">06d-virt-controller-pods.txt</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/fleet-beat/12-patch-NOT-RUN-drain-outdated.txt">12-patch-NOT-RUN-drain-outdated.txt</a>.</p>
+
+<h2>act3-mcp</h2>
+<p>Plain curl against korrel8r's MCP endpoint, no LLM, no client library, walks the JSON-RPC protocol an agent would use: initialize, tools/list (8 tools), then create_goals_graph from a firing VMCannotBeEvicted alert (act3-mcp/SUMMARY.md). On upstream korrel8r 0.12.1 that call reaches the VMI, the VM, the pod, 296 metric series and 200 log lines, each node carrying the query that produced it. The identical request against GA COO 1.5.2 (korrel8r 0.11.1) stalls at the alert and 136 metric series: it never reaches VMI, pod or logs, because AlertToVMI and VmiToLogs aren't shipped.</p>
+<p>Detail: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/act3-mcp/SUMMARY.md">SUMMARY.md</a>. Key files: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/act3-mcp/05-tools-call-create_goals_graph-response.pretty.json">05-tools-call-create_goals_graph-response.pretty.json</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/act3-mcp/11-coo-0.11.1-create_goals_graph-alert-to-vmi-response.pretty.json">11-coo-0.11.1-create_goals_graph-alert-to-vmi-response.pretty.json</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/act3-mcp/03-tools-list-response.pretty.json">03-tools-list-response.pretty.json</a>.</p>
+
+<h2>korrel8r-0.12</h2>
+<p>A separately deployed instance of upstream korrel8r 0.12.1, not the GA build, configured with 104 correlation rules across five domains (korrel8r-0.12/SUMMARY.md). From the VMCannotBeEvicted alert on vm-non-migratable, asking for every related object returned 200 log lines, 312 metric series, 3 nodes, 1 pod, 1 PVC and 1 netflow record, through the same rule graph act3-mcp exercises over HTTP.</p>
+<p>Detail: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/korrel8r-0.12/SUMMARY.md">SUMMARY.md</a>. Key files: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/korrel8r-0.12/rules-count.txt">rules-count.txt</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/korrel8r-0.12/goals-vmi-to-all.json">goals-vmi-to-all.json</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/korrel8r-0.12/alert-VMCannotBeEvicted.json">alert-VMCannotBeEvicted.json</a>.</p>
+
+<h2>troubleshooting-panel</h2>
+<p>The Troubleshooting Panel UIPlugin, shipped by COO 1.5.2, reconciles cleanly (Available=True, Degraded=False) and runs korrel8r 0.11.1 (troubleshooting-panel/SUMMARY.md). That build is missing five rules added later upstream, VmToAlert, VmiToAlert, AlertToVM, AlertToVMI and VmiToLogs, confirmed by an 18 PASS / 5 FAIL check. Pasting the newer rule templates into the ConfigMap by hand failed two ways at once: a template parse error in the console, and the operator reverting the ConfigMap on its own within two minutes, so this is a version gap, not a config fix.</p>
+<p>Detail: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/troubleshooting-panel/SUMMARY.md">SUMMARY.md</a>. Key files: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/troubleshooting-panel/version.txt">version.txt</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/troubleshooting-panel/rules.txt">rules.txt</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/troubleshooting-panel/custom-rule-experiment-outcome.txt">custom-rule-experiment-outcome.txt</a>.</p>
+
+<h2>demo-vms</h2>
+<p>Three VMs back this site: vm-demo and vm-demo-2 on ReadWriteMany storage, LiveMigratable=True, and vm-non-migratable on ReadWriteOnce, LiveMigratable=False, reason "PVC vm-non-migratable-disk is not shared" (demo-vms/SUMMARY.md). <code>kubevirt_vmi_non_evictable</code> reads 0 for the migratable VMs and 1 for vm-non-migratable, which is exactly what makes VMCannotBeEvicted fire, since its eviction strategy is LiveMigrate regardless. That alert started at 13:13:14Z, naming the VM, its namespace and its node.</p>
+<p>Detail: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/demo-vms/SUMMARY.md">SUMMARY.md</a>. Key files: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/demo-vms/oc-get-vmi-wide.txt">oc-get-vmi-wide.txt</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/demo-vms/thanos-kubevirt_vmi_non_evictable.json">thanos-kubevirt_vmi_non_evictable.json</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/demo-vms/alertmanager-VMCannotBeEvicted.json">alertmanager-VMCannotBeEvicted.json</a>.</p>
+
+<h2>loki-logging</h2>
+<p>This directory has no SUMMARY.md; the numbers below come from its raw manifests and query results. The LokiStack named logging-loki comes up Ready, with one caveat in its own status condition: ingester replicas (1) equal the replication factor (1), so ingestion stops whenever the single ingester pod restarts (loki-logging/06-lokistack-final.yaml). A ClusterLogForwarder named demo-loki forwards application logs from demo-vms, plus infrastructure logs, into that LokiStack, and a live query returns real log lines from vm-demo-2's virt-launcher pod (loki-logging/04-query-application-demo-vms.json).</p>
+<p>Key files: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/loki-logging/06-lokistack-final.yaml">06-lokistack-final.yaml</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/loki-logging/07-clusterlogforwarder-demo-loki-final.yaml">07-clusterlogforwarder-demo-loki-final.yaml</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/loki-logging/04-query-application-demo-vms.json">04-query-application-demo-vms.json</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/loki-logging/02-lokistack-status.yaml">02-lokistack-status.yaml</a>.</p>
+
+<h2>netobserv</h2>
+<p>NetObserv operator 1.12.2 is installed, its eBPF agents and flowlogs-pipeline capturing flows into a Loki-backed store (netobserv/SUMMARY.md). At query time the ingest rate was 422.71 flows per second, 216,748 total processed since deployment. One worker node sat at its 250/250 pod cap, leaving one of three DaemonSet replicas pending; this costs no coverage of the demo VMs, since all three run on a different node with an active agent and pipeline pod.</p>
+<p>Detail: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/netobserv/SUMMARY.md">SUMMARY.md</a>. Key files: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/netobserv/07-prometheus-flows-processed-rate.json">07-prometheus-flows-processed-rate.json</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/netobserv/07b-prometheus-flows-processed-total.json">07b-prometheus-flows-processed-total.json</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/netobserv/05-node-80-18-full-describe.txt">05-node-80-18-full-describe.txt</a>.</p>
+
+<h2>minio</h2>
+<p>MinIO runs as a single-replica Deployment in minio-demo with a 60 GiB NFS-backed PVC, S3 API on port 9000, console on 9001 (minio/SUMMARY.md). A one-shot Job using mc created two buckets, loki-logging and loki-netobserv; OpenShift Logging and NetObserv both hold secrets pointing at this endpoint. Its startup logs describe a single drive in a single set, which MinIO itself flags as a single point of failure, fine for a demo, not production.</p>
+<p>Detail: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/minio/SUMMARY.md">SUMMARY.md</a>. Key files: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/minio/minio-pod-status.txt">minio-pod-status.txt</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/minio/minio-mc-mb-job-logs.txt">minio-mc-mb-job-logs.txt</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/minio/secrets-summary.txt">secrets-summary.txt</a>.</p>
+
+<h2>schedstats</h2>
+<p><code>kernel.sched_schedstats</code> was flipped from 0 to 1 on all three worker nodes at 2026-09-11T12:52:21Z, using a debug pod chrooted into each host rather than a MachineConfig (schedstats/SUMMARY.md). This is what makes the vCPU delay and wait panels in act1-metrics show real, non-zero numbers instead of silently blank ones. The change is deliberately non-persistent: no MachineConfig applied, no node drained, and it reverts on the next reboot of any of these nodes.</p>
+<p>Detail: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/schedstats/SUMMARY.md">SUMMARY.md</a>. Key file: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/schedstats/nodes.txt">nodes.txt</a>.</p>
+
+<h2>verify</h2>
+<p>This directory also has no SUMMARY.md; it holds the preflight and correlation-verification scripts run before and during the demo. preflight.txt reports 23 PASS, 12 WARN, 0 FAIL across cluster version, OpenShift Virtualization, COO, Logging, NetObserv, LokiStack, FlowCollector and korrel8r checks. act2-01-korrel8r-verify.txt reproduces the same five missing korrel8r rules named under troubleshooting-panel above; alerts-summary.txt captures both the firing VMCannotBeEvicted alert and the pending OutdatedVirtualMachineInstanceWorkloads alert.</p>
+<p>Key files: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/verify/preflight.txt">preflight.txt</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/verify/act2-01-korrel8r-verify.txt">act2-01-korrel8r-verify.txt</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/verify/alerts-summary.txt">alerts-summary.txt</a>.</p>
+
+<h2>manifests-applied</h2>
+<p>This directory has no SUMMARY.md either; it is a flat archive of the YAML applied to build the demo, 17 files. It covers the five namespaces and OperatorGroup, the MinIO PVC and Deployment, the LokiStack and its ClusterLogForwarder, the NetObserv subscription, LokiStack and FlowCollector, the Troubleshooting Panel UIPlugin, and the three demo VM specs.</p>
+<p>Key files: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/manifests-applied/00-namespaces.yaml">00-namespaces.yaml</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/manifests-applied/02-lokistack.yaml">02-lokistack.yaml</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/manifests-applied/08-flowcollector.yaml">08-flowcollector.yaml</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/manifests-applied/vm-non-migratable.yaml">vm-non-migratable.yaml</a>.</p>
+
+<h2>Screenshots</h2>
+<p>All eleven images were captured with a headless browser logged in as a cluster admin on <code>&lt;cluster-domain&gt;</code>, OpenShift 4.20.32, COO 1.5.2 (korrel8r 0.11.1); none were edited (evidence/screenshots/SCREENSHOTS.md).</p>
+
+<figure>
+<img src="img/console-panel-graph-from-VMI-korrel8r-0.11.1.png" alt="Troubleshooting Panel graph drawn from a VMI query">
+<figcaption>The panel after a VMI query. The GA engine drew VMI, VM, Pod, Node, PVC, PersistentVolume, StorageClass, DataVolume, 5 events, 248 of 263 metrics, 2 of 3 flows and 1000 log lines.</figcaption>
+</figure>
+
+<figure>
+<img src="img/console-panel-graph-from-alert-korrel8r-0.11.1.png" alt="Troubleshooting Panel graph drawn from the VMCannotBeEvicted alert">
+<figcaption>The same panel after an alert query: only the alert and 128 metric series, no AlertToVMI rule.</figcaption>
+</figure>
+
+<figure>
+<img src="img/console-panel-query-editor-VMI.png" alt="Troubleshooting Panel query editor expanded">
+<figcaption>The query editor, opened with the expand chevron; placeholder text reads domain:class:selector.</figcaption>
+</figure>
+
+<figure>
+<img src="img/console-panel-pod-page-focus-disabled.png" alt="Troubleshooting Panel opened from a pod details page, focus disabled">
+<figcaption>Opened from the virt-launcher pod's page: greyed out, "No starting point for correlation," same on the VM and VMI pages.</figcaption>
+</figure>
+
+<figure>
+<img src="img/console-panel-broken-by-custom-rule-experiment.png" alt="Troubleshooting Panel showing a broken custom rule error">
+<figcaption>Pasting 0.12 rule templates into the ConfigMap: "invalid rule AlertToVMI: function \"required\" not defined." Reverted within two minutes.</figcaption>
+</figure>
+
+<figure>
+<img src="img/console-dashboard-kubevirt-top-consumers.png" alt="KubeVirt Top Consumers built-in dashboard">
+<figcaption>The built-in KubeVirt Top Consumers dashboard. VM names here are text, not links to their pods.</figcaption>
+</figure>
+
+<figure>
+<img src="img/console-alerting-all-projects.png" alt="Alerting page with All Projects selected">
+<figcaption>Alerting with the project selector on All Projects; it defaults to the last project and shows nothing otherwise.</figcaption>
+</figure>
+
+<figure>
+<img src="img/console-metrics-series-count-one-vm.png" alt="Metrics page running the one-VM series count query">
+<figcaption>The one-VM series count query from act1-metrics, run in Observe, Metrics.</figcaption>
+</figure>
+
+<figure>
+<img src="img/console-vm-metrics-tab.png" alt="VM's own Metrics tab in the console">
+<figcaption>The VM's own Metrics tab.</figcaption>
+</figure>
+
+<figure>
+<img src="img/reference-architecture-step7-light.png" alt="Reference architecture animation at step 7, light theme">
+<figcaption>The animated reference-architecture page at step 7, light theme.</figcaption>
+</figure>
+
+<figure>
+<img src="img/reference-architecture-step7-dark.png" alt="Reference architecture animation at step 7, dark theme">
+<figcaption>The animated reference-architecture page at step 7, dark theme.</figcaption>
+</figure>
+
+</main>
+<footer><div class="shell">Numbers on this site come from a live run on 2026-09-11 (OpenShift 4.20.32, OpenShift Virtualization 4.20.24, Cluster Observability Operator 1.5.2). Every figure names the evidence file it came from. Source: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo">github.com/naeemarsalan/ocp-virt-observability-demo</a>.</div></footer>
+</body>
+</html>

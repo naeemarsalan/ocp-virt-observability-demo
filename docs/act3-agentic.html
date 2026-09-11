@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Rule Graph, Not a Guess</title>
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<header class="top"><div class="shell">
+  <a class="brand" href="index.html">OpenShift Virtualization observability demo</a>
+  <nav>
+    <a href="index.html">Overview</a>
+    <a href="act1-depth.html">1 Depth</a>
+    <a href="act2-correlation.html">2 Correlation</a>
+    <a href="act2b-fleet.html">2b Fleet</a>
+    <a href="act3-agentic.html" aria-current="page">3 Agentic</a>
+    <a href="reference-architecture.html">Reference architecture</a>
+    <a href="evidence.html">Evidence</a>
+    <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo">GitHub</a>
+  </nav>
+</div></header>
+<main class="shell">
+<p class="kicker">Demo 3 of 4</p>
+<h1>The Rule Graph, Not a Guess</h1>
+<p class="lead">This demo asks the exact question Act 2 asked, from a firing alert to the VM, its pod and its logs, but sends it as plain JSON-RPC to korrel8r's own MCP server instead of clicking through the console, no LLM in the loop, just curl. The one thing to take from the room: the agent walks the rule graph; it does not guess, it reads the query and count korrel8r already computed for each class and asks for exactly that, and the GA console build answers the same request with two classes instead of six because the rule that crosses from alert to VMI hasn't shipped there yet.</p>
+
+<div class="status">
+  <span class="up">korrel8r MCP server: experimental upstream since v0.10.0</span>
+  <span>Standalone MCP server: Red Hat has said it will not productize this</span>
+  <span>GA COO 1.5.2 (korrel8r 0.11.1) also serves /mcp, incomplete rule set</span>
+  <span>Lightspeed console integration: roadmap, targeted OCP 5.1</span>
+</div>
+
+<h2>What this demo shows</h2>
+<p>A separately deployed upstream korrel8r 0.12.1 instance, driven with nothing but <code>curl</code> and JSON-RPC 2.0 bodies over the MCP "streamable HTTP" transport. <code>initialize</code> returns <code>serverInfo.version</code> 0.12.1 and a free-text <code>instructions</code> field that tells a caller how to use the tools: call <code>list_domains</code>, then <code>help</code>, then <code>create_goals_graph</code> or <code>create_neighbors_graph</code>, the server documents its own workflow (evidence/act3-mcp/01-initialize-response.pretty.json). <code>tools/list</code> comes back with 8 tools: <code>create_goals_graph</code>, <code>create_neighbors_graph</code>, <code>get_console</code>, <code>get_objects</code>, <code>help</code>, <code>list_domain_classes</code>, <code>list_domains</code>, <code>show_in_console</code> (evidence/act3-mcp/03-tools-list-response.pretty.json). Only three of those eight were actually called in this run, <code>list_domains</code>, <code>create_goals_graph</code> and <code>get_objects</code>; <code>list_domain_classes</code> and <code>help</code> exist but weren't exercised, and <code>get_console</code>/<code>show_in_console</code> are covered under Status below.</p>
+<p><code>list_domains</code> reports 8 domains, each with its backing store address: alert (Alertmanager plus Thanos), incident (no store configured), k8s, log (the logging LokiStack gateway), metric (Thanos), mock, netflow (the NetObserv LokiStack gateway, but its own store self-reports <code>403 Forbidden: You don't have permission to access this tenant</code>) and trace (evidence/act3-mcp/04-tools-call-list_domains-response.pretty.json).</p>
+<p>The real walk is <code>create_goals_graph</code>, started from the firing <code>VMCannotBeEvicted</code> alert on <code>vm-non-migratable</code>, with goals set to the VMI, the pod, application logs and metrics. The response's <code>nodes</code> array carries one entry per class actually reached, each with the concrete query and result count that produced it: alert 1, VMI 1, VM 1, Pod 1, metric 296 (three queries, 100 plus 100 plus 96), log 200 (two queries of 100 each). The <code>edges</code> array names which class fed which, <code>alert:alert</code> to <code>k8s:VirtualMachineInstance.v1.kubevirt.io</code> to <code>k8s:Pod.v1</code> to <code>log:application</code>, plus a separate edge straight from the alert to metric and to the owning VM (evidence/act3-mcp/05-tools-call-create_goals_graph-response.pretty.json). The graph response itself doesn't print a rule name against each edge, that class-to-class path is what <code>korrel8r rules --long</code> would show as the named rules <code>AlertToVMI</code>, <code>VmiToPod</code> and <code>VmiToLogs</code>, part of the 37 KubeVirt rules out of 104 total on this upstream build (reference-architecture.html), versus 4 KubeVirt rules out of 47 on the GA image (evidence/troubleshooting-panel/SUMMARY.md).</p>
+<p>Then <code>get_objects</code> turns two of those graph queries into real data. The pod query returns exactly 1 object: <code>virt-launcher-vm-non-migratable-xrsp6</code> in <code>demo-vms</code>, phase Running, full spec and status (evidence/act3-mcp/06-tools-call-get_objects-pod-response.pretty.json). The log query, with <code>constraint.limit</code> set to 5, returns exactly 5 real log lines, newest first, for example <code>"msg":"Polling command: [guest-fsfreeze-status]"</code> at <code>agent_poller.go:374</code> (evidence/act3-mcp/07-tools-call-get_objects-logs-response.pretty.json). Neither query was written by hand, both came verbatim off nodes the graph call had already produced.</p>
+<p>Running the identical <code>create_goals_graph</code> request against the GA Cluster Observability Operator 1.5.2 image, the same korrel8r 0.11.1 the console in Act 2 runs, its <code>/mcp</code> endpoint answers too, after a bearer token (an unauthenticated probe gets HTTP 401). But the graph it returns has only two nodes: <code>alert:alert</code> (1) and <code>metric:metric</code> (136), the same alert PromQL expression as before but fewer series because this build's rule set differs, and it never crosses into VMI, pod or log space (evidence/act3-mcp/09 through 11-coo-0.11.1-*). This matches the rule gap Act 2 already shows in the console: <code>AlertToVMI</code> and <code>VmiToLogs</code> aren't compiled into 0.11.1.</p>
+
+<h2>Why it matters next to vCenter</h2>
+<p>Neither vCenter nor Aria Operations ships anything like an MCP interface today, there is no equivalent shipped, supported product surface for a script or an agent to ask "why is this VM alerting" and get back a graph of concrete queries. What Aria does have, and does ship, is its own troubleshooting workbench built on vCenter's owned inventory tree, dynamic-threshold correlation and root-cause suggestions inside a single vendor's console, available and supported now. That is a fair advantage to name out loud: it is turnkey today, while everything in this act runs against an upstream feature Red Hat has explicitly said it will not productize as a standalone server (3-act3-agentic.md). The honest claim isn't "we have agents and VMware doesn't", it's narrower: the correlation graph underneath is real, open and rule-based rather than a proprietary black box, so once an agent (Lightspeed, or anything else that speaks MCP) sits on top of it, that agent inherits every domain korrel8r already knows, not just the ones a vSphere-scoped tool was built to see.</p>
+
+<h2>Before you start</h2>
+<p>Full prerequisites, install order and every failure mode are in <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/0-prereqs-preflight-failure-modes.md">0-prereqs-preflight-failure-modes.md</a>. For this act specifically:</p>
+<ul>
+<li>A reachable korrel8r 0.12.1. Either the in-cluster Deployment this evidence used, exposed through its own Route (<code>evidence/korrel8r-0.12/deploy.yaml</code>, <code>route.txt</code>), or the same binary run locally with <code>korrel8r mcp</code> talking stdin/stdout, confirmed real by <code>korrel8r mcp --help</code> and <code>korrel8r web --help | grep -i mcp</code> (evidence/act3-mcp/08-korrel8r-mcp-help.txt, 08-korrel8r-web-help-mcp-grep.txt). Local <code>--help</code>/<code>version</code> was run against binary <code>0.12.2-dev</code>, close to but not identical to the deployed 0.12.1, that binary was only used to confirm the subcommand and flag exist, not to query the cluster.</li>
+<li>A bearer token for the HTTP transport, <code>$(oc whoami -t)</code>, and the same token to probe the GA COO pod's own <code>/mcp</code> for the contrast call, an unauthenticated request there returns 401.</li>
+<li>The GA Cluster Observability Operator's korrel8r pod already exists in <code>openshift-cluster-observability-operator</code> if you want that contrast half, no separate install needed for it.</li>
+<li><code>python3 -m json.tool</code> or <code>jq</code> to read the responses, they arrive as SSE (<code>content-type: text/event-stream</code>), each reply is one <code>data:</code> line carrying the JSON-RPC body.</li>
+<li>The <code>VMCannotBeEvicted</code> alert already firing on <code>vm-non-migratable</code> in <code>demo-vms</code>, staged the same way Act 2 stages it.</li>
+</ul>
+
+<h2>Steps</h2>
+<ol class="steps">
+<li>Reach korrel8r 0.12.1. Locally, over stdio, using your existing <code>oc</code> login: <code>korrel8r --config /path/to/korrel8r-standalone-config.yaml mcp</code>. Against the deployed instance this evidence used, over streamable HTTP:
+<pre><code>KORREL8R_URL=$(cat route.txt)   # e.g. https://&lt;cluster-domain&gt;
+TOKEN=$(oc whoami -t)</code></pre>
+</li>
+<li><code>initialize</code>, capture the session id header the response carries.
+<pre><code>curl -sk "${KORREL8R_URL}/mcp" \
+  -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"curl-evidence","version":"1"}}}'
+# response header: mcp-session-id: &lt;value&gt;
+SESSION=&lt;value from that header&gt;</code></pre>
+</li>
+<li>Send <code>notifications/initialized</code> to finish the handshake, then <code>tools/list</code>, every call after step 2 carries <code>Mcp-Session-Id: ${SESSION}</code> alongside the same headers as step 2.
+<pre><code>curl -sk "${KORREL8R_URL}/mcp" -H "Mcp-Session-Id: ${SESSION}" ... \
+  -d '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+curl -sk "${KORREL8R_URL}/mcp" -H "Mcp-Session-Id: ${SESSION}" ... \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'</code></pre>
+</li>
+<li>Call <code>list_domains</code> to see what stores korrel8r can actually reach.
+<pre><code>-d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_domains","arguments":{}}}'</code></pre>
+</li>
+<li>Call <code>create_goals_graph</code> from the firing alert, asking for the VMI, the pod, application logs and metrics.
+<pre><code>-d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"create_goals_graph","arguments":{
+  "start":{"queries":["alert:alert:{\"alertname\":\"VMCannotBeEvicted\",\"namespace\":\"demo-vms\",\"name\":\"vm-non-migratable\"}"]},
+  "goals":["k8s:VirtualMachineInstance.v1.kubevirt.io","k8s:Pod.v1","log:application","metric:metric"]}}}'</code></pre>
+</li>
+<li>Call <code>get_objects</code> on the pod query the graph just returned, no query written by hand.
+<pre><code>-d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_objects","arguments":{
+  "query":"k8s:Pod.v1:{\"namespace\":\"demo-vms\",\"labels\":{\"kubevirt.io\":\"virt-launcher\",\"vm.kubevirt.io/name\":\"vm-non-migratable\"}}"}}}'</code></pre>
+</li>
+<li>Call <code>get_objects</code> on the log query from the same graph, limited to 5 lines.
+<pre><code>-d '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"get_objects","arguments":{
+  "query":"log:application:{\"namespace\":\"demo-vms\",\"labels\":{\"kubevirt.io\":\"virt-launcher\",\"vm.kubevirt.io/name\":\"vm-non-migratable\"}}",
+  "constraint":{"limit":5}}}}'</code></pre>
+</li>
+<li>Run the identical step-5 request against the GA COO 1.5.2 pod's own <code>/mcp</code> (it listens on <code>localhost:9443</code> inside its pod, reach it by <code>oc exec</code> or a port-forward, with <code>Authorization: Bearer $(oc whoami -t)</code>), and watch it stall at alert and metric.</li>
+</ol>
+
+<h2>What you will see</h2>
+<p>No screenshots for this act, it's curl against JSON-RPC, not a UI. What the responses actually said:</p>
+<pre><code>"serverInfo": { "name": "korrel8r", "title": "Korrel8r MCP Server", "version": "0.12.1" }</code></pre>
+<pre><code>"tools": [ "create_goals_graph", "create_neighbors_graph", "get_console",
+           "get_objects", "help", "list_domain_classes", "list_domains", "show_in_console" ]</code></pre>
+<pre><code>{"name":"netflow", "stores":[{"error":"403 Forbidden: {\"error\":\"You don't have permission
+  to access this tenant\",\"errorType\":\"observatorium-api\"}"}]}</code></pre>
+<pre><code>{"class":"metric:metric","count":296,"queries":[
+  {"count":100,"query":"metric:metric:kubevirt_vmi_non_evictable * on (name, namespace) group_left () kubevirt_vmi_info{phase=\"running\"} == 1"},
+  {"count":100,"query":"metric:metric:{namespace=\"demo-vms\",pod=\"virt-launcher-vm-non-migratable-xrsp6\"}"},
+  {"count":96, "query":"metric:metric:{namespace=\"demo-vms\",name=\"vm-non-migratable\"}"}]}
+{"class":"log:application","count":200,"queries":[
+  {"count":100,"query":"log:application:{\"namespace\":\"demo-vms\",\"labels\":{...}}"},
+  {"count":100,"query":"log:application:{\"namespace\":\"demo-vms\",\"name\":\"virt-launcher-vm-non-migratable-xrsp6\"}"}]}</code></pre>
+<pre><code>{"_timestamp":"2026-09-11T13:53:22.259Z", ... "msg":"Polling command: [guest-fsfreeze-status]",
+  "pos":"agent_poller.go:374", ... "k8s_pod_name":"virt-launcher-vm-non-migratable-xrsp6"}</code></pre>
+<pre><code># same request, GA COO 1.5.2 (korrel8r 0.11.1):
+{"edges":[{"goal":"metric:metric","start":"alert:alert"}],
+ "nodes":[{"class":"metric:metric","count":136,...},{"class":"alert:alert","count":1,...}]}</code></pre>
+
+<div class="tw">
+<table>
+<thead><tr><th>Call</th><th>What came back</th><th>Evidence file</th></tr></thead>
+<tbody>
+<tr><td><code>initialize</code></td><td>serverInfo name korrel8r, version 0.12.1, protocolVersion 2025-03-26, a self-describing instructions field</td><td>evidence/act3-mcp/01-initialize-response.pretty.json</td></tr>
+<tr><td><code>tools/list</code></td><td>8 tools, all present, names as listed above</td><td>evidence/act3-mcp/03-tools-list-response.pretty.json</td></tr>
+<tr><td><code>tools/call list_domains</code></td><td>8 domains with backing store addresses; netflow store self-reports 403 Forbidden</td><td>evidence/act3-mcp/04-tools-call-list_domains-response.pretty.json</td></tr>
+<tr><td><code>tools/call create_goals_graph</code>, from the alert</td><td>alert 1, VMI 1, VM 1, Pod 1, metric 296 (3 queries: 100, 100, 96), log 200 (2 queries of 100)</td><td>evidence/act3-mcp/05-tools-call-create_goals_graph-response.pretty.json</td></tr>
+<tr><td><code>tools/call get_objects</code>, pod query</td><td>1 real object: pod virt-launcher-vm-non-migratable-xrsp6, phase Running</td><td>evidence/act3-mcp/06-tools-call-get_objects-pod-response.pretty.json</td></tr>
+<tr><td><code>tools/call get_objects</code>, log query, limit 5</td><td>exactly 5 real log lines, newest first</td><td>evidence/act3-mcp/07-tools-call-get_objects-logs-response.pretty.json</td></tr>
+<tr><td>Same <code>create_goals_graph</code>, GA COO 1.5.2 (korrel8r 0.11.1)</td><td>alert 1, metric 136, nothing else, VMI/pod/log unreached</td><td>evidence/act3-mcp/11-coo-0.11.1-create_goals_graph-alert-to-vmi-response.pretty.json</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>What can go wrong</h2>
+<p>The full 14-row failure-mode table is in <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/0-prereqs-preflight-failure-modes.md">0-prereqs-preflight-failure-modes.md</a>. The ones that actually hit this act:</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>Symptom</th><th>Root cause</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td>Someone in the room expects an LLM chatting with korrel8r live</td><td>korrel8r's MCP server is upstream, Experimental since v0.10.0, and Red Hat has stated it will not productize a standalone korrel8r MCP server</td><td>Present this as direction, not delivery. The shipping GA mechanism is the Troubleshooting Panel's node graph from Act 2.</td></tr>
+<tr><td>An unauthenticated call to the GA pod's <code>/mcp</code> returns HTTP 401</td><td>The GA COO 1.5.2 korrel8r listens on <code>localhost:9443</code> inside its own pod and requires a bearer token</td><td><code>Authorization: Bearer $(oc whoami -t)</code>, confirmed live in evidence/act3-mcp/SUMMARY.md section 8.</td></tr>
+<tr><td>The identical request on GA korrel8r 0.11.1 stalls at alert and metric</td><td><code>AlertToVMI</code> and <code>VmiToLogs</code> aren't compiled into this build's rule set, the same gap Act 2 shows in the console</td><td>Run the full walk against the separately deployed upstream 0.12.1 instance; don't promise the six-class result on the GA build.</td></tr>
+<tr><td><code>list_domains</code> reports the netflow store as 403 Forbidden</td><td>The server is self-reporting its own store's tenant permissions, not a bug introduced by this demo</td><td>Confirm netflow store RBAC separately before promising a netflow node in the graph.</td></tr>
+<tr><td><code>get_objects</code> on a <code>metric:metric</code> query never returns a sample value</td><td>korrel8r's metric domain object is labels plus a fingerprint by design, it doesn't carry values</td><td>Say this out loud before someone asks. A real number needs a follow-up PromQL call outside korrel8r.</td></tr>
+<tr><td><code>get_console</code> / <code>show_in_console</code> do nothing useful</td><td>Both are gated behind the console's <code>enableAgentNavigation</code> feature-gate, Dev Preview today, and weren't exercised in this evidence run</td><td>Don't demo these two live.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Status</h2>
+<ul>
+<li><strong>GA:</strong> nothing about the MCP transport itself. What is GA is the correlation engine underneath it, the Cluster Observability Operator's Troubleshooting Panel and its rule graph, shown working in Act 2.</li>
+<li><strong>Upstream, real:</strong> both MCP transports, <code>korrel8r mcp</code> for stdio and <code>korrel8r web --mcp</code> (default on) for streamable HTTP, Experimental since v0.10.0. The GA COO 1.5.2 image also answers <code>/mcp</code> requests, its bundled korrel8r 0.11.1 just can't cross from alert to VMI.</li>
+<li><strong>Experimental, demoed live:</strong> the full alert-to-VM-to-VMI-to-pod-to-log-to-metric walk over MCP, only reachable through the separately deployed upstream 0.12.1 instance, not the shipped console build.</li>
+<li><strong>Explicitly not shipping:</strong> Red Hat has stated it will not productize a standalone korrel8r MCP server.</li>
+<li><strong>Roadmap:</strong> OpenShift Lightspeed talking to korrel8r from inside the console, targeted OCP 5.1. Its agent-navigation feature-gate and the <code>get_console</code>/<code>show_in_console</code> tools are Dev Preview today.</li>
+</ul>
+
+<h2>Read more</h2>
+<ul>
+<li>Full write-up with both transports, the eight tools, three demo prompts and the REST fallback: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/3-act3-agentic.md">3-act3-agentic.md</a></li>
+<li>Raw evidence for every call and response on this page: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/act3-mcp/SUMMARY.md">evidence/act3-mcp/SUMMARY.md</a></li>
+<li>Rule counts referenced above: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/korrel8r-0.12/SUMMARY.md">evidence/korrel8r-0.12/SUMMARY.md</a>, <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo/blob/main/evidence/troubleshooting-panel/SUMMARY.md">evidence/troubleshooting-panel/SUMMARY.md</a></li>
+<li>Where this sits in the wider system: <a href="reference-architecture.html">reference architecture</a></li>
+</ul>
+
+</main>
+<footer><div class="shell">Numbers on this site come from a live run on 2026-09-11 (OpenShift 4.20.32, OpenShift Virtualization 4.20.24, Cluster Observability Operator 1.5.2). Every figure names the evidence file it came from. Source: <a href="https://github.com/naeemarsalan/ocp-virt-observability-demo">github.com/naeemarsalan/ocp-virt-observability-demo</a>.</div></footer>
+</body>
+</html>
