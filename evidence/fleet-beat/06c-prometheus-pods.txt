@@ -1,0 +1,3 @@
+NAME               READY   STATUS    RESTARTS   AGE   IP             NODE                NOMINATED NODE   READINESS GATES
+prometheus-k8s-0   6/6     Running   0          30d   10.128.1.241   ec-f4-bb-ed-07-a8   <none>           <none>
+prometheus-k8s-1   6/6     Running   0          30d   10.130.0.116   24-6e-96-33-24-90   <none>           <none>

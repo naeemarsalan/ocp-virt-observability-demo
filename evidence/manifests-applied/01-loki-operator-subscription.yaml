@@ -1,0 +1,14 @@
+# loki-operator Subscription in openshift-operators-redhat.
+# OperatorGroup openshift-operators-redhat already exists in this namespace
+# (pre-existing on this cluster) so we do not recreate it here.
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: loki-operator
+  namespace: openshift-operators-redhat
+spec:
+  channel: stable-6.6
+  name: loki-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic

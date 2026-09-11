@@ -1,0 +1,72 @@
+apiVersion: loki.grafana.com/v1
+kind: LokiStack
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"loki.grafana.com/v1","kind":"LokiStack","metadata":{"annotations":{},"name":"logging-loki","namespace":"openshift-logging"},"spec":{"managementState":"Managed","size":"1x.demo","storage":{"schemas":[{"effectiveDate":"2024-01-01","version":"v13"}],"secret":{"name":"logging-loki-s3","type":"s3"}},"storageClassName":"nfs-csi","tenants":{"mode":"openshift-logging"}}}
+  creationTimestamp: "2026-09-11T13:03:07Z"
+  generation: 1
+  name: logging-loki
+  namespace: openshift-logging
+  resourceVersion: "1198150250"
+  uid: 01de4ce1-8e0e-48c9-9099-6ce8fe5e34ca
+spec:
+  managementState: Managed
+  size: 1x.demo
+  storage:
+    schemas:
+    - effectiveDate: "2024-01-01"
+      version: v13
+    secret:
+      name: logging-loki-s3
+      type: s3
+  storageClassName: nfs-csi
+  tenants:
+    mode: openshift-logging
+status:
+  components:
+    compactor:
+      Ready:
+      - logging-loki-compactor-0
+    distributor:
+      Ready:
+      - logging-loki-distributor-86bc5fc96d-knjcc
+    gateway:
+      Ready:
+      - logging-loki-gateway-b5597695-rlgdt
+      - logging-loki-gateway-b5597695-9xm6c
+    indexGateway:
+      Ready:
+      - logging-loki-index-gateway-0
+    ingester:
+      Ready:
+      - logging-loki-ingester-0
+    querier:
+      Ready:
+      - logging-loki-querier-f79fb85fd-g8z7v
+    queryFrontend:
+      Ready:
+      - logging-loki-query-frontend-6c945b58df-pvlxc
+    ruler:
+      Failed: []
+      Pending: []
+      Ready: []
+      Running: []
+  conditions:
+  - lastTransitionTime: "2026-09-11T13:12:26Z"
+    message: The ingester replicas (1) are less than or equal to the replication factor
+      (1). Which causes log ingestion to stop when ingester pods get restarted.
+    reason: InsufficientIngesterReplicas
+    status: "True"
+    type: Warning
+  - lastTransitionTime: "2026-09-11T13:12:26Z"
+    message: All components ready
+    reason: ReadyComponents
+    status: "True"
+    type: Ready
+  networkPolicyRuleSet: None
+  storage:
+    credentialMode: static
+    schemas:
+    - effectiveDate: "2024-01-01"
+      version: v13

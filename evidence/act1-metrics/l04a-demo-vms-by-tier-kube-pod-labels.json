@@ -1,0 +1,1 @@
+{"status":"success","data":{"resultType":"vector","result":[{"metric":{"label_tier":"db"},"value":[1789134497.956,"1"]},{"metric":{"label_tier":"web"},"value":[1789134497.956,"2"]},{"metric":{"label_tier":"nonmigratable"},"value":[1789134497.956,"1"]}],"analysis":{}}}

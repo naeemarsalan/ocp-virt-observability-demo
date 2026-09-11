@@ -1,0 +1,4 @@
+NAME                     STATUS   VOLUME                                     CAPACITY      ACCESS MODES   STORAGECLASS          VOLUMEATTRIBUTESCLASS   AGE   VOLUMEMODE
+vm-demo-2-rootdisk       Bound    pvc-23c27de9-32c8-4f33-b3bc-1a0fe202a04a   34144990004   RWX            nfs-csi               <unset>                 10m   Filesystem
+vm-demo-rootdisk         Bound    pvc-3cbd8c19-2b1d-4cce-bc22-207dae2ed322   34144990004   RWX            nfs-csi               <unset>                 10m   Filesystem
+vm-non-migratable-disk   Bound    pvc-e02bd29a-2683-4064-a356-b7d4b4e29bfa   30Gi          RWO            truenas-iscsi-block   <unset>                 10m   Block

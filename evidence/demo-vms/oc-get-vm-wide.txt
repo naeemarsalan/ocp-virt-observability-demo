@@ -1,0 +1,4 @@
+NAME                AGE   STATUS    READY
+vm-demo             10m   Running   True
+vm-demo-2           10m   Running   True
+vm-non-migratable   10m   Running   True

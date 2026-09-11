@@ -1,0 +1,81 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"operators.coreos.com/v1alpha1","kind":"Subscription","metadata":{"annotations":{},"name":"netobserv-operator","namespace":"openshift-netobserv-operator"},"spec":{"channel":"stable","installPlanApproval":"Automatic","name":"netobserv-operator","source":"redhat-operators","sourceNamespace":"openshift-marketplace"}}
+  creationTimestamp: "2026-09-11T13:16:00Z"
+  generation: 1
+  labels:
+    operators.coreos.com/netobserv-operator.openshift-netobserv-operator: ""
+  name: netobserv-operator
+  namespace: openshift-netobserv-operator
+  resourceVersion: "1198164922"
+  uid: 5e34a3af-3fcb-43a8-9aee-8f5accfc67c5
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: netobserv-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+status:
+  catalogHealth:
+  - catalogSourceRef:
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: CatalogSource
+      name: certified-operators
+      namespace: openshift-marketplace
+      resourceVersion: "1198148020"
+      uid: ac33f395-0afb-4228-848d-16cc793a1c39
+    healthy: true
+    lastUpdated: "2026-09-11T13:16:21Z"
+  - catalogSourceRef:
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: CatalogSource
+      name: community-operators
+      namespace: openshift-marketplace
+      resourceVersion: "1198123862"
+      uid: 8ece5c23-9986-4972-a9ec-0e6351c6d26b
+    healthy: true
+    lastUpdated: "2026-09-11T13:16:21Z"
+  - catalogSourceRef:
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: CatalogSource
+      name: redhat-marketplace
+      namespace: openshift-marketplace
+      resourceVersion: "1198123888"
+      uid: 833baeb6-386a-49fa-b087-66e61f295909
+    healthy: true
+    lastUpdated: "2026-09-11T13:16:21Z"
+  - catalogSourceRef:
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: CatalogSource
+      name: redhat-operators
+      namespace: openshift-marketplace
+      resourceVersion: "1198118779"
+      uid: 7a29ceb5-b1ad-4a8f-838b-b4f66a4b1c92
+    healthy: true
+    lastUpdated: "2026-09-11T13:16:21Z"
+  conditions:
+  - lastTransitionTime: "2026-09-11T13:16:24Z"
+    message: all available catalogsources are healthy
+    reason: AllCatalogSourcesHealthy
+    status: "False"
+    type: CatalogSourcesUnhealthy
+  currentCSV: network-observability-operator.v1.12.2
+  installPlanGeneration: 1
+  installPlanRef:
+    apiVersion: operators.coreos.com/v1alpha1
+    kind: InstallPlan
+    name: install-n77z8
+    namespace: openshift-netobserv-operator
+    resourceVersion: "1198160650"
+    uid: 00641e26-54ad-447d-9550-7e461f6f48a9
+  installedCSV: network-observability-operator.v1.12.2
+  installplan:
+    apiVersion: operators.coreos.com/v1alpha1
+    kind: InstallPlan
+    name: install-n77z8
+    uuid: 00641e26-54ad-447d-9550-7e461f6f48a9
+  lastUpdated: "2026-09-11T13:18:16Z"
+  state: AtLatestKnown

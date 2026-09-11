@@ -1,0 +1,271 @@
+{
+    "apiVersion": "kubevirt.io/v1",
+    "kind": "VirtualMachineInstance",
+    "metadata": {
+        "annotations": {
+            "kubevirt.io/latest-observed-api-version": "v1",
+            "kubevirt.io/nonroot": "true",
+            "kubevirt.io/pci-topology-version": "v3",
+            "kubevirt.io/storage-observed-api-version": "v1",
+            "kubevirt.io/vm-generation": "1"
+        },
+        "creationTimestamp": "2026-09-11T13:09:44Z",
+        "finalizers": [
+            "kubevirt.io/virtualMachineControllerFinalize",
+            "foregroundDeleteVirtualMachine"
+        ],
+        "generation": 25,
+        "labels": {
+            "app": "demo",
+            "kubevirt.io/nodeName": "24-6e-96-33-24-90",
+            "tier": "web"
+        },
+        "name": "vm-demo",
+        "namespace": "demo-vms",
+        "ownerReferences": [
+            {
+                "apiVersion": "kubevirt.io/v1",
+                "blockOwnerDeletion": true,
+                "controller": true,
+                "kind": "VirtualMachine",
+                "name": "vm-demo",
+                "uid": "ede3cbb4-f69c-4659-ae2b-7cfa3cc85730"
+            }
+        ],
+        "resourceVersion": "1198209349",
+        "uid": "b72ced89-a406-4e36-ad62-598b0c488956"
+    },
+    "spec": {
+        "architecture": "amd64",
+        "domain": {
+            "cpu": {
+                "cores": 2,
+                "model": "Haswell-noTSX-IBRS"
+            },
+            "devices": {
+                "disks": [
+                    {
+                        "disk": {
+                            "bus": "virtio"
+                        },
+                        "name": "rootdisk"
+                    },
+                    {
+                        "disk": {
+                            "bus": "virtio"
+                        },
+                        "name": "cloudinitdisk"
+                    }
+                ],
+                "interfaces": [
+                    {
+                        "macAddress": "02:c9:8e:f6:84:25",
+                        "masquerade": {},
+                        "name": "default"
+                    }
+                ]
+            },
+            "features": {
+                "acpi": {
+                    "enabled": true
+                }
+            },
+            "firmware": {
+                "serial": "e2b474e0-2296-43af-b299-2541f200517c",
+                "uuid": "8fd46ba9-7d4e-4334-84dc-e9d09bf8910c"
+            },
+            "machine": {
+                "type": "pc-q35-rhel9.6.0"
+            },
+            "memory": {
+                "guest": "4Gi",
+                "maxGuest": "16Gi"
+            },
+            "resources": {
+                "requests": {
+                    "memory": "4Gi"
+                }
+            }
+        },
+        "evictionStrategy": "LiveMigrate",
+        "networks": [
+            {
+                "name": "default",
+                "pod": {}
+            }
+        ],
+        "volumes": [
+            {
+                "dataVolume": {
+                    "name": "vm-demo-rootdisk"
+                },
+                "name": "rootdisk"
+            },
+            {
+                "cloudInitNoCloud": {
+                    "userData": "#cloud-config\npackage_update: true\npackages:\n  - qemu-guest-agent\n  - stress-ng\npassword: fedora\nchpasswd:\n  expire: false\nssh_pwauth: true\nruncmd:\n  - systemctl enable --now qemu-guest-agent\n  - |\n    cat \u003e /usr/local/bin/trigger-vcpu-queue.sh \u003c\u003c'SCRIPT'\n    #!/bin/bash\n    NPROC=$(nproc)\n    TARGET=${1:-$((NPROC + 15))}\n    echo \"vCPUs=$NPROC, spawning $TARGET cpu-bound stressors for 6m\"\n    stress-ng --cpu \"$TARGET\" --cpu-load 100 --timeout 360s\n    SCRIPT\n    chmod +x /usr/local/bin/trigger-vcpu-queue.sh\n  - |\n    cat \u003e /usr/local/bin/trigger-mem-pressure.sh \u003c\u003c'SCRIPT'\n    #!/bin/bash\n    MODE=${1:-pressure}\n    MEMTOTAL_KB=$(awk '/MemTotal/{print $2}' /proc/meminfo)\n    if [[ \"$MODE\" == \"low\" ]]; then\n      BYTES=$(( MEMTOTAL_KB * 98 / 100 * 1024 ))\n      stress-ng --vm 1 --vm-bytes \"${BYTES}\" --vm-method zero-one --vm-keep --timeout 35m\n    else\n      BYTES=$(( MEMTOTAL_KB * 130 / 100 * 1024 ))\n      stress-ng --vm 2 --vm-bytes \"${BYTES}\" --vm-method all --timeout 10m\n    fi\n    SCRIPT\n    chmod +x /usr/local/bin/trigger-mem-pressure.sh\n"
+                },
+                "name": "cloudinitdisk"
+            }
+        ]
+    },
+    "status": {
+        "activePods": {
+            "b12c1e8e-e327-43a7-b62b-b624e63e5d76": "24-6e-96-33-24-90",
+            "fdd60fd9-7f66-4c02-ae05-016ea7b97eda": "ec-f4-bb-ed-07-a8"
+        },
+        "conditions": [
+            {
+                "lastProbeTime": null,
+                "lastTransitionTime": "2026-09-11T13:38:32Z",
+                "status": "True",
+                "type": "Ready"
+            },
+            {
+                "lastProbeTime": null,
+                "lastTransitionTime": null,
+                "message": "All of the VMI's DVs are bound and ready",
+                "reason": "AllDVsReady",
+                "status": "True",
+                "type": "DataVolumesReady"
+            },
+            {
+                "lastProbeTime": null,
+                "lastTransitionTime": null,
+                "status": "True",
+                "type": "LiveMigratable"
+            },
+            {
+                "lastProbeTime": null,
+                "lastTransitionTime": null,
+                "status": "True",
+                "type": "StorageLiveMigratable"
+            },
+            {
+                "lastProbeTime": "2026-09-11T13:12:38Z",
+                "lastTransitionTime": null,
+                "status": "True",
+                "type": "AgentConnected"
+            }
+        ],
+        "currentCPUTopology": {
+            "cores": 2
+        },
+        "guestOSInfo": {
+            "id": "fedora",
+            "kernelRelease": "6.19.10-300.fc44.x86_64",
+            "kernelVersion": "#1 SMP PREEMPT_DYNAMIC Wed Mar 25 18:23:49 UTC 2026",
+            "machine": "x86_64",
+            "name": "Fedora Linux",
+            "prettyName": "Fedora Linux 44 (Cloud Edition)",
+            "version": "44 (Cloud Edition)",
+            "versionId": "44"
+        },
+        "interfaces": [
+            {
+                "infoSource": "domain, guest-agent",
+                "interfaceName": "enp1s0",
+                "ipAddress": "10.130.0.232",
+                "ipAddresses": [
+                    "10.130.0.232"
+                ],
+                "linkState": "up",
+                "mac": "02:c9:8e:f6:84:25",
+                "name": "default",
+                "podInterfaceName": "eth0",
+                "queueCount": 1
+            }
+        ],
+        "launcherContainerImageVersion": "registry.redhat.io/container-native-virtualization/virt-launcher-rhel9@sha256:c88c03c9af6148defc7c80e996be66f727272c09c4023f48504f0a2ea529430e",
+        "machine": {
+            "type": "pc-q35-rhel9.6.0"
+        },
+        "memory": {
+            "guestAtBoot": "4Gi",
+            "guestCurrent": "4Gi",
+            "guestRequested": "4Gi"
+        },
+        "migrationMethod": "BlockMigration",
+        "migrationState": {
+            "completed": true,
+            "endTimestamp": "2026-09-11T13:38:31Z",
+            "migrationConfiguration": {
+                "allowAutoConverge": false,
+                "allowPostCopy": false,
+                "allowWorkloadDisruption": false,
+                "bandwidthPerMigration": "0",
+                "completionTimeoutPerGiB": 150,
+                "nodeDrainTaintKey": "kubevirt.io/drain",
+                "parallelMigrationsPerCluster": 5,
+                "parallelOutboundMigrationsPerNode": 2,
+                "progressTimeout": 150,
+                "unsafeMigrationOverride": false
+            },
+            "migrationUid": "69aa2389-ca18-41ec-9a05-8717db3d397f",
+            "mode": "PreCopy",
+            "sourceNode": "ec-f4-bb-ed-07-a8",
+            "sourcePod": "virt-launcher-vm-demo-fx5hg",
+            "startTimestamp": "2026-09-11T13:38:17Z",
+            "targetDirectMigrationNodePorts": {
+                "40877": 0,
+                "41387": 49152,
+                "45517": 49153
+            },
+            "targetNode": "24-6e-96-33-24-90",
+            "targetNodeAddress": "10.130.0.131",
+            "targetNodeDomainDetected": true,
+            "targetNodeDomainReadyTimestamp": "2026-09-11T13:38:31Z",
+            "targetPod": "virt-launcher-vm-demo-b5lpj"
+        },
+        "migrationTransport": "Unix",
+        "nodeName": "24-6e-96-33-24-90",
+        "phase": "Running",
+        "phaseTransitionTimestamps": [
+            {
+                "phase": "Pending",
+                "phaseTransitionTimestamp": "2026-09-11T13:09:44Z"
+            },
+            {
+                "phase": "Scheduling",
+                "phaseTransitionTimestamp": "2026-09-11T13:11:51Z"
+            },
+            {
+                "phase": "Scheduled",
+                "phaseTransitionTimestamp": "2026-09-11T13:12:13Z"
+            },
+            {
+                "phase": "Running",
+                "phaseTransitionTimestamp": "2026-09-11T13:12:18Z"
+            }
+        ],
+        "qosClass": "Burstable",
+        "runtimeUser": 107,
+        "selinuxContext": "system_u:object_r:container_file_t:s0:c530,c731",
+        "virtualMachineRevisionName": "revision-start-vm-ede3cbb4-f69c-4659-ae2b-7cfa3cc85730-1",
+        "volumeStatus": [
+            {
+                "name": "cloudinitdisk",
+                "size": 1048576,
+                "target": "vdb"
+            },
+            {
+                "name": "rootdisk",
+                "persistentVolumeClaimInfo": {
+                    "accessModes": [
+                        "ReadWriteMany"
+                    ],
+                    "capacity": {
+                        "storage": "34144990004"
+                    },
+                    "claimName": "vm-demo-rootdisk",
+                    "filesystemOverhead": "0.06",
+                    "requests": {
+                        "storage": "34144990004"
+                    },
+                    "volumeMode": "Filesystem"
+                },
+                "target": "vda"
+            }
+        ]
+    }
+}

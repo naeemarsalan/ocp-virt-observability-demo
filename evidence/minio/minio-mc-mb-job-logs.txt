@@ -1,0 +1,6 @@
+Added `localminio` successfully.
+Bucket created successfully `localminio/loki-logging`.
+Bucket created successfully `localminio/loki-netobserv`.
+--- mc ls localminio ---
+[2026-09-11 12:56:35 UTC]     0B loki-logging/
+[2026-09-11 12:56:35 UTC]     0B loki-netobserv/

@@ -1,0 +1,2 @@
+VM vm-demo was scheduled to migrate
+exit_code=0

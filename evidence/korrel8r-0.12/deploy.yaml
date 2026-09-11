@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: korrel8r-demo, namespace: demo-vms }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: korrel8r-demo, namespace: demo-vms, labels: { app: korrel8r-demo } }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: korrel8r-demo } }
+  template:
+    metadata: { labels: { app: korrel8r-demo } }
+    spec:
+      serviceAccountName: korrel8r-demo
+      containers:
+        - name: korrel8r
+          image: quay.io/korrel8r/korrel8r:0.12.1
+          args: ["--http=:8080", "--config=/config/korrel8r.yaml", "--verbose=2"]
+          ports: [{ containerPort: 8080, name: http }]
+          volumeMounts: [{ name: config, mountPath: /config }]
+          resources: { requests: { cpu: 250m, memory: 1Gi }, limits: { cpu: "2", memory: 4Gi } }
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: ["ALL"] }, runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      volumes: [{ name: config, configMap: { name: korrel8r-demo } }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: korrel8r-demo, namespace: demo-vms }
+spec: { selector: { app: korrel8r-demo }, ports: [{ port: 8080, targetPort: 8080, name: http }] }
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata: { name: korrel8r-demo, namespace: demo-vms }
+spec: { to: { kind: Service, name: korrel8r-demo }, port: { targetPort: http }, tls: { termination: edge, insecureEdgeTerminationPolicy: Redirect } }

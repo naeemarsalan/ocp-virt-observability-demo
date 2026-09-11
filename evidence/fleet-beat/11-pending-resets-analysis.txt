@@ -1,0 +1,30 @@
+Derived from 10-ALERTS_FOR_STATE-7d-history.json (query_range, 2026-09-04 13:47Z .. 2026-09-11 13:47Z, step=1800s)
+
+ALERTS_FOR_STATE for alertname="OutdatedVirtualMachineInstanceWorkloads" carries, as its sample value, the
+Unix timestamp at which the alert's current pending period began ("activeAt"). Each virt-controller replica
+that has held the metrics/leader role produces its own label set (differs by pod/instance), so Prometheus/Thanos
+tracks the "for" timer separately per replica.
+
+Distinct activeAt values observed over the 7-day window:
+  pod virt-controller-7b86885b64-zxd9s: 11 distinct activeAt values (11 resets of the pending timer)
+  pod virt-controller-7b86885b64-p4m8c: 25 distinct activeAt values (25 resets of the pending timer)
+  combined: 36 resets in 7 days (roughly one every ~4.7 hours on average)
+
+Corroborating evidence (06e/06f pod status, saved separately):
+  virt-controller-7b86885b64-p4m8c: restartCount=106 (pod age 30d); lastState=Error, exitCode=1,
+    terminated 2026-09-11T13:44:56Z, restarted 2026-09-11T13:45:19Z. Termination log shows:
+    "leaderelection.go:429] Failed to update lock optimistically ... context deadline exceeded" and
+    "leaderelection lost".
+  virt-controller-7b86885b64-zxd9s: restartCount=105 (pod age 30d); lastState=Error, exitCode=1,
+    terminated 2026-09-11T13:22:41Z, restarted 2026-09-11T13:20:21Z.
+
+Conclusion: the two virt-controller replicas are crash-looping / repeatedly losing and re-acquiring
+leader election (lease renewal timing out against the API server). Every time the leader-elected
+replica changes or restarts, the ALERTS/ALERTS_FOR_STATE series' label set changes (different pod/instance
+label), which resets Prometheus's "for" timer for OutdatedVirtualMachineInstanceWorkloads back to 0,
+even though the underlying condition (kubevirt_vmi_number_of_outdated != 0, currently 21) has been
+continuously true for the entire 7-day window observed (see 02-outdated-7d-1h.json: value constant at 21).
+
+This is the most likely reason the alert has stayed in "pending" state rather than progressing to
+"firing": the 24h for-window is being reset by controller instability roughly every 4-5 hours on
+average, well short of the 24h it needs to run uninterrupted.

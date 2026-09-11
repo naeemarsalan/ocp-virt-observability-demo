@@ -1,0 +1,63 @@
+==============================================================================
+ ACT 2 -- KORREL8R KUBEVIRT RULE VERIFICATION  (namespace: openshift-cluster-observability-operator)
+==============================================================================
+  PASS  UIPlugin/troubleshooting-panel exists
+  PASS  korrel8r pod: korrel8r-578787ddc4-nnbh6
+  image: registry.redhat.io/cluster-observability-operator/korrel8r-rhel9@sha256:90cc70741585b3a555888cc119c1ad630e988513dd2065158b26f6fa33dc8a22
+
+-- korrel8r version (compare against CHANGELOG.md: KubeVirt rules added as
+   YAML in v0.11.4 / 2026-07-22, compiled to quickrules in v0.12.1 / 2026-08-26) --
+0.11.1
+
+-- korrel8r rules matching Vm|Vmi|Alert (the exact names to look for:
+   VmToVmi, VmiToPod, VmiToNode, VmToPVC, VmiToPVC, VmToAlert, VmiToAlert,
+   VmimToAlert, AlertToVM, AlertToVMI, AlertToVmim, VmiToLogs, VmimToVmi,
+   VmiToVmim, NodeToVmi) --
+VmiToNode: [k8s:VirtualMachineInstance.v1.kubevirt.io] -> [k8s:Node.v1]
+VmToPVC: [k8s:VirtualMachine.v1.kubevirt.io] -> [k8s:PersistentVolumeClaim.v1]
+VmToVmi: [k8s:VirtualMachine.v1.kubevirt.io] -> [k8s:VirtualMachineInstance.v1.kubevirt.io]
+VmiToPod: [k8s:VirtualMachineInstance.v1.kubevirt.io] -> [k8s:Pod.v1]
+AlertToDeployment: [alert:alert] -> [k8s:Deployment.v1.apps]
+AlertToPod: [alert:alert] -> [k8s:Pod.v1]
+AlertToPodDisruptionBudget: [alert:alert] -> [k8s:PodDisruptionBudget.v1.policy]
+AlertToDaemonSet: [alert:alert] -> [k8s:DaemonSet.v1.apps]
+AlertToStatefulSet: [alert:alert] -> [k8s:StatefulSet.v1.apps]
+AlertToMetric: [alert:alert] -> [metric:metric]
+PodToAlert: [k8s:Pod.v1] -> [alert:alert]
+PodToLokiAlert: [k8s:Pod.v1] -> [alert:alert]
+DeploymentToAlert: [k8s:Deployment.v1.apps] -> [alert:alert]
+PodDisruptionBudgetToAlert: [k8s:PodDisruptionBudget.v1.policy] -> [alert:alert]
+DaemonSetToAlert: [k8s:DaemonSet.v1.apps] -> [alert:alert]
+StatefulSetToAlert: [k8s:StatefulSet.v1.apps] -> [alert:alert]
+AlertToIncident: [alert:alert] -> [incident:incident]
+IncidentToAlert: [incident:incident] -> [alert:alert]
+  PASS  rule present: VmToVmi
+  PASS  rule present: VmiToPod
+  PASS  rule present: VmiToNode
+  FAIL  rule MISSING: VmToAlert
+  FAIL  rule MISSING: VmiToAlert
+  FAIL  rule MISSING: AlertToVM
+  FAIL  rule MISSING: AlertToVMI
+  FAIL  rule MISSING: VmiToLogs
+
+-- REST API cross-check: GET /api/v1alpha1/domain/k8s/classes (should list
+   VirtualMachineInstance.kubevirt.io, VirtualMachine.kubevirt.io, etc.) --
+  WARN  in-pod curl check failed -- fall back to the external route method below
+
+-- Same check from OUTSIDE the pod, via an authenticated route (needs a
+   Route created once: oc apply -k github.com/korrel8r/korrel8r/config/route?version=main) --
+  WARN  no korrel8r route found -- skip, the in-pod exec checks above are sufficient
+
+================================================================
+ MISSING RULES: VmToAlert VmiToAlert AlertToVM AlertToVMI VmiToLogs
+ Your korrel8r image predates v0.11.4/v0.12.1, or ships a stripped
+ rule set. Two options:
+   1) Upgrade COO to a version that pins a newer korrel8r image (check
+      the COO release notes / bundle CSV for the korrel8r image tag --
+      it is not documented in the 1.0-1.5.2 release notes, so you must
+      check the actual deployed digest, e.g.:
+        oc get deployment korrel8r -n openshift-cluster-observability-operator -o jsonpath='{.spec.template.spec.containers[0].image}'
+   2) Use the UNSUPPORTED custom-rule fallback: see
+      act2-06-korrel8r-custom-rule-fallback.yaml -- read its header
+      comment before you rely on it for anything but a live demo.
+================================================================

@@ -1,0 +1,140 @@
+{
+    "jsonrpc": "2.0",
+    "id": 4,
+    "result": {
+        "content": [
+            {
+                "type": "text",
+                "text": "{\"edges\":[{\"goal\":\"metric:metric\",\"start\":\"k8s:VirtualMachine.v1.kubevirt.io\"},{\"goal\":\"metric:metric\",\"start\":\"k8s:Pod.v1\"},{\"goal\":\"log:application\",\"start\":\"k8s:Pod.v1\"},{\"goal\":\"k8s:VirtualMachineInstance.v1.kubevirt.io\",\"start\":\"alert:alert\"},{\"goal\":\"metric:metric\",\"start\":\"alert:alert\"},{\"goal\":\"k8s:VirtualMachine.v1.kubevirt.io\",\"start\":\"alert:alert\"},{\"goal\":\"k8s:Pod.v1\",\"start\":\"k8s:VirtualMachineInstance.v1.kubevirt.io\"},{\"goal\":\"log:application\",\"start\":\"k8s:VirtualMachineInstance.v1.kubevirt.io\"}],\"nodes\":[{\"class\":\"k8s:VirtualMachineInstance.v1.kubevirt.io\",\"count\":1,\"queries\":[{\"count\":1,\"query\":\"k8s:VirtualMachineInstance.v1.kubevirt.io:{\\\"namespace\\\":\\\"demo-vms\\\",\\\"name\\\":\\\"vm-non-migratable\\\"}\",\"statuses\":[{\"count\":1,\"status\":\"Finalizer\"}]}]},{\"class\":\"k8s:VirtualMachine.v1.kubevirt.io\",\"count\":1,\"queries\":[{\"count\":1,\"query\":\"k8s:VirtualMachine.v1.kubevirt.io:{\\\"namespace\\\":\\\"demo-vms\\\",\\\"name\\\":\\\"vm-non-migratable\\\"}\",\"statuses\":[{\"count\":1,\"status\":\"Finalizer\"}]}]},{\"class\":\"k8s:Pod.v1\",\"count\":1,\"queries\":[{\"count\":1,\"query\":\"k8s:Pod.v1:{\\\"namespace\\\":\\\"demo-vms\\\",\\\"labels\\\":{\\\"kubevirt.io\\\":\\\"virt-launcher\\\",\\\"vm.kubevirt.io/name\\\":\\\"vm-non-migratable\\\"}}\"}]},{\"class\":\"alert:alert\",\"count\":1,\"queries\":[{\"count\":1,\"query\":\"alert:alert:{\\\"alertname\\\":\\\"VMCannotBeEvicted\\\",\\\"namespace\\\":\\\"demo-vms\\\",\\\"name\\\":\\\"vm-non-migratable\\\"}\",\"statuses\":[{\"count\":1,\"status\":\"warning\"}]}]},{\"class\":\"metric:metric\",\"count\":296,\"queries\":[{\"count\":100,\"query\":\"metric:metric:kubevirt_vmi_non_evictable * on (name, namespace) group_left () kubevirt_vmi_info{phase=\\\"running\\\"} == 1\"},{\"count\":100,\"query\":\"metric:metric:{namespace=\\\"demo-vms\\\",pod=\\\"virt-launcher-vm-non-migratable-xrsp6\\\"}\"},{\"count\":96,\"query\":\"metric:metric:{namespace=\\\"demo-vms\\\",name=\\\"vm-non-migratable\\\"}\"}]},{\"class\":\"log:application\",\"count\":200,\"queries\":[{\"count\":100,\"query\":\"log:application:{\\\"namespace\\\":\\\"demo-vms\\\",\\\"labels\\\":{\\\"kubevirt.io\\\":\\\"virt-launcher\\\",\\\"vm.kubevirt.io/name\\\":\\\"vm-non-migratable\\\"}}\"},{\"count\":100,\"query\":\"log:application:{\\\"namespace\\\":\\\"demo-vms\\\",\\\"name\\\":\\\"virt-launcher-vm-non-migratable-xrsp6\\\"}\"}]}]}"
+            }
+        ],
+        "structuredContent": {
+            "edges": [
+                {
+                    "goal": "metric:metric",
+                    "start": "k8s:VirtualMachine.v1.kubevirt.io"
+                },
+                {
+                    "goal": "metric:metric",
+                    "start": "k8s:Pod.v1"
+                },
+                {
+                    "goal": "log:application",
+                    "start": "k8s:Pod.v1"
+                },
+                {
+                    "goal": "k8s:VirtualMachineInstance.v1.kubevirt.io",
+                    "start": "alert:alert"
+                },
+                {
+                    "goal": "metric:metric",
+                    "start": "alert:alert"
+                },
+                {
+                    "goal": "k8s:VirtualMachine.v1.kubevirt.io",
+                    "start": "alert:alert"
+                },
+                {
+                    "goal": "k8s:Pod.v1",
+                    "start": "k8s:VirtualMachineInstance.v1.kubevirt.io"
+                },
+                {
+                    "goal": "log:application",
+                    "start": "k8s:VirtualMachineInstance.v1.kubevirt.io"
+                }
+            ],
+            "nodes": [
+                {
+                    "class": "k8s:VirtualMachineInstance.v1.kubevirt.io",
+                    "count": 1,
+                    "queries": [
+                        {
+                            "count": 1,
+                            "query": "k8s:VirtualMachineInstance.v1.kubevirt.io:{\"namespace\":\"demo-vms\",\"name\":\"vm-non-migratable\"}",
+                            "statuses": [
+                                {
+                                    "count": 1,
+                                    "status": "Finalizer"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "class": "k8s:VirtualMachine.v1.kubevirt.io",
+                    "count": 1,
+                    "queries": [
+                        {
+                            "count": 1,
+                            "query": "k8s:VirtualMachine.v1.kubevirt.io:{\"namespace\":\"demo-vms\",\"name\":\"vm-non-migratable\"}",
+                            "statuses": [
+                                {
+                                    "count": 1,
+                                    "status": "Finalizer"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "class": "k8s:Pod.v1",
+                    "count": 1,
+                    "queries": [
+                        {
+                            "count": 1,
+                            "query": "k8s:Pod.v1:{\"namespace\":\"demo-vms\",\"labels\":{\"kubevirt.io\":\"virt-launcher\",\"vm.kubevirt.io/name\":\"vm-non-migratable\"}}"
+                        }
+                    ]
+                },
+                {
+                    "class": "alert:alert",
+                    "count": 1,
+                    "queries": [
+                        {
+                            "count": 1,
+                            "query": "alert:alert:{\"alertname\":\"VMCannotBeEvicted\",\"namespace\":\"demo-vms\",\"name\":\"vm-non-migratable\"}",
+                            "statuses": [
+                                {
+                                    "count": 1,
+                                    "status": "warning"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "class": "metric:metric",
+                    "count": 296,
+                    "queries": [
+                        {
+                            "count": 100,
+                            "query": "metric:metric:kubevirt_vmi_non_evictable * on (name, namespace) group_left () kubevirt_vmi_info{phase=\"running\"} == 1"
+                        },
+                        {
+                            "count": 100,
+                            "query": "metric:metric:{namespace=\"demo-vms\",pod=\"virt-launcher-vm-non-migratable-xrsp6\"}"
+                        },
+                        {
+                            "count": 96,
+                            "query": "metric:metric:{namespace=\"demo-vms\",name=\"vm-non-migratable\"}"
+                        }
+                    ]
+                },
+                {
+                    "class": "log:application",
+                    "count": 200,
+                    "queries": [
+                        {
+                            "count": 100,
+                            "query": "log:application:{\"namespace\":\"demo-vms\",\"labels\":{\"kubevirt.io\":\"virt-launcher\",\"vm.kubevirt.io/name\":\"vm-non-migratable\"}}"
+                        },
+                        {
+                            "count": 100,
+                            "query": "log:application:{\"namespace\":\"demo-vms\",\"name\":\"virt-launcher-vm-non-migratable-xrsp6\"}"
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}

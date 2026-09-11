@@ -1,0 +1,453 @@
+{
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": {
+        "annotations": {
+            "k8s.ovn.org/pod-networks": "{\"default\":{\"ip_addresses\":[\"10.128.0.85/23\"],\"mac_address\":\"0a:58:0a:80:00:55\",\"gateway_ips\":[\"10.128.0.1\"],\"routes\":[{\"dest\":\"10.128.0.0/14\",\"nextHop\":\"10.128.0.1\"},{\"dest\":\"172.30.0.0/16\",\"nextHop\":\"10.128.0.1\"},{\"dest\":\"169.254.0.5/32\",\"nextHop\":\"10.128.0.1\"},{\"dest\":\"100.64.0.0/16\",\"nextHop\":\"10.128.0.1\"}],\"ip_address\":\"10.128.0.85/23\",\"gateway_ip\":\"10.128.0.1\",\"role\":\"primary\"}}",
+            "k8s.v1.cni.cncf.io/network-status": "[{\n    \"name\": \"ovn-kubernetes\",\n    \"interface\": \"eth0\",\n    \"ips\": [\n        \"10.128.0.85\"\n    ],\n    \"mac\": \"0a:58:0a:80:00:55\",\n    \"default\": true,\n    \"dns\": {}\n}]",
+            "kubevirt.io/install-strategy-identifier": "39f0a517ea18cce0caf95ab54fed35d9b6c2a1c4",
+            "kubevirt.io/install-strategy-registry": "",
+            "kubevirt.io/install-strategy-version": "sha256:40674c4027b7d206d69719b04c2ec27478d051591473ca3004bedbb578bc9c4e",
+            "openshift.io/required-scc": "restricted-v2",
+            "openshift.io/scc": "restricted-v2",
+            "seccomp.security.alpha.kubernetes.io/pod": "runtime/default",
+            "security.openshift.io/validated-scc-subject-type": "user"
+        },
+        "creationTimestamp": "2026-08-12T00:57:16Z",
+        "generateName": "virt-controller-7b86885b64-",
+        "generation": 1,
+        "labels": {
+            "app.kubernetes.io/component": "compute",
+            "app.kubernetes.io/managed-by": "virt-operator",
+            "app.kubernetes.io/part-of": "hyperconverged-cluster",
+            "app.kubernetes.io/version": "4.20.24",
+            "kubevirt.io": "virt-controller",
+            "pod-template-hash": "7b86885b64",
+            "prometheus.kubevirt.io": "true"
+        },
+        "name": "virt-controller-7b86885b64-zxd9s",
+        "namespace": "openshift-cnv",
+        "ownerReferences": [
+            {
+                "apiVersion": "apps/v1",
+                "blockOwnerDeletion": true,
+                "controller": true,
+                "kind": "ReplicaSet",
+                "name": "virt-controller-7b86885b64",
+                "uid": "6934245c-5063-4e8f-83eb-635532f17afd"
+            }
+        ],
+        "resourceVersion": "1198176827",
+        "uid": "7e57fd64-6694-493e-a57b-ea49522a6d2a"
+    },
+    "spec": {
+        "affinity": {
+            "nodeAffinity": {
+                "preferredDuringSchedulingIgnoredDuringExecution": [
+                    {
+                        "preference": {
+                            "matchExpressions": [
+                                {
+                                    "key": "node-role.kubernetes.io/worker",
+                                    "operator": "DoesNotExist"
+                                }
+                            ]
+                        },
+                        "weight": 100
+                    }
+                ],
+                "requiredDuringSchedulingIgnoredDuringExecution": {
+                    "nodeSelectorTerms": [
+                        {
+                            "matchExpressions": [
+                                {
+                                    "key": "node-role.kubernetes.io/control-plane",
+                                    "operator": "Exists"
+                                }
+                            ]
+                        },
+                        {
+                            "matchExpressions": [
+                                {
+                                    "key": "node-role.kubernetes.io/master",
+                                    "operator": "Exists"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            "podAntiAffinity": {
+                "preferredDuringSchedulingIgnoredDuringExecution": [
+                    {
+                        "podAffinityTerm": {
+                            "labelSelector": {
+                                "matchExpressions": [
+                                    {
+                                        "key": "kubevirt.io",
+                                        "operator": "In",
+                                        "values": [
+                                            "virt-controller"
+                                        ]
+                                    }
+                                ]
+                            },
+                            "topologyKey": "kubernetes.io/hostname"
+                        },
+                        "weight": 1
+                    }
+                ]
+            }
+        },
+        "containers": [
+            {
+                "args": [
+                    "--launcher-image",
+                    "registry.redhat.io/container-native-virtualization/virt-launcher-rhel9@sha256:c88c03c9af6148defc7c80e996be66f727272c09c4023f48504f0a2ea529430e",
+                    "--exporter-image",
+                    "registry.redhat.io/container-native-virtualization/virt-exportserver-rhel9@sha256:4f750d2aa625b12b85b8441cbab14491333cce3fb5b34a35f6e6e7792d520620",
+                    "--port",
+                    "8443",
+                    "-v",
+                    "2"
+                ],
+                "command": [
+                    "virt-controller"
+                ],
+                "env": [
+                    {
+                        "name": "SIDECAR_SHIM_IMAGE",
+                        "value": "registry.redhat.io/container-native-virtualization/sidecar-shim-rhel9@sha256:794364a24194b75028a8cbb9b119dd966bb974ee062aaca2f5f65edab5d0389d"
+                    }
+                ],
+                "image": "registry.redhat.io/container-native-virtualization/virt-controller-rhel9@sha256:db4f5f7a3c34a388aa2382ee60e3ba9fdabdf959e416139f206a99f52b6dab67",
+                "imagePullPolicy": "IfNotPresent",
+                "livenessProbe": {
+                    "failureThreshold": 8,
+                    "httpGet": {
+                        "path": "/healthz",
+                        "port": 8443,
+                        "scheme": "HTTPS"
+                    },
+                    "initialDelaySeconds": 15,
+                    "periodSeconds": 10,
+                    "successThreshold": 1,
+                    "timeoutSeconds": 10
+                },
+                "name": "virt-controller",
+                "ports": [
+                    {
+                        "containerPort": 8443,
+                        "name": "metrics",
+                        "protocol": "TCP"
+                    }
+                ],
+                "readinessProbe": {
+                    "failureThreshold": 3,
+                    "httpGet": {
+                        "path": "/leader",
+                        "port": 8443,
+                        "scheme": "HTTPS"
+                    },
+                    "initialDelaySeconds": 15,
+                    "periodSeconds": 10,
+                    "successThreshold": 1,
+                    "timeoutSeconds": 10
+                },
+                "resources": {
+                    "requests": {
+                        "cpu": "10m",
+                        "memory": "275Mi"
+                    }
+                },
+                "securityContext": {
+                    "allowPrivilegeEscalation": false,
+                    "capabilities": {
+                        "drop": [
+                            "ALL"
+                        ]
+                    },
+                    "runAsUser": 1000750000,
+                    "seccompProfile": {
+                        "type": "RuntimeDefault"
+                    }
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "FallbackToLogsOnError",
+                "volumeMounts": [
+                    {
+                        "mountPath": "/etc/virt-controller/certificates",
+                        "name": "kubevirt-controller-certs",
+                        "readOnly": true
+                    },
+                    {
+                        "mountPath": "/etc/virt-controller/exportca",
+                        "name": "kubevirt-export-ca",
+                        "readOnly": true
+                    },
+                    {
+                        "mountPath": "/profile-data",
+                        "name": "profile-data"
+                    },
+                    {
+                        "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+                        "name": "kube-api-access-vdngp",
+                        "readOnly": true
+                    }
+                ]
+            }
+        ],
+        "dnsPolicy": "ClusterFirst",
+        "enableServiceLinks": true,
+        "imagePullSecrets": [
+            {
+                "name": "kubevirt-controller-dockercfg-wnfq7"
+            }
+        ],
+        "nodeName": "ec-f4-bb-ed-07-a8",
+        "nodeSelector": {
+            "kubernetes.io/os": "linux"
+        },
+        "preemptionPolicy": "PreemptLowerPriority",
+        "priority": 1000000000,
+        "priorityClassName": "kubevirt-cluster-critical",
+        "restartPolicy": "Always",
+        "schedulerName": "default-scheduler",
+        "securityContext": {
+            "fsGroup": 1000750000,
+            "runAsNonRoot": true,
+            "seLinuxOptions": {
+                "level": "s0:c27,c24"
+            },
+            "seccompProfile": {
+                "type": "RuntimeDefault"
+            }
+        },
+        "serviceAccount": "kubevirt-controller",
+        "serviceAccountName": "kubevirt-controller",
+        "terminationGracePeriodSeconds": 30,
+        "tolerations": [
+            {
+                "key": "CriticalAddonsOnly",
+                "operator": "Exists"
+            },
+            {
+                "effect": "NoSchedule",
+                "key": "node-role.kubernetes.io/control-plane",
+                "operator": "Exists"
+            },
+            {
+                "effect": "NoSchedule",
+                "key": "node-role.kubernetes.io/master",
+                "operator": "Exists"
+            },
+            {
+                "effect": "NoExecute",
+                "key": "node.kubernetes.io/not-ready",
+                "operator": "Exists",
+                "tolerationSeconds": 300
+            },
+            {
+                "effect": "NoExecute",
+                "key": "node.kubernetes.io/unreachable",
+                "operator": "Exists",
+                "tolerationSeconds": 300
+            },
+            {
+                "effect": "NoSchedule",
+                "key": "node.kubernetes.io/memory-pressure",
+                "operator": "Exists"
+            }
+        ],
+        "volumes": [
+            {
+                "name": "kubevirt-controller-certs",
+                "secret": {
+                    "defaultMode": 420,
+                    "optional": true,
+                    "secretName": "kubevirt-controller-certs"
+                }
+            },
+            {
+                "name": "kubevirt-export-ca",
+                "secret": {
+                    "defaultMode": 420,
+                    "optional": true,
+                    "secretName": "kubevirt-export-ca"
+                }
+            },
+            {
+                "emptyDir": {},
+                "name": "profile-data"
+            },
+            {
+                "name": "kube-api-access-vdngp",
+                "projected": {
+                    "defaultMode": 420,
+                    "sources": [
+                        {
+                            "serviceAccountToken": {
+                                "expirationSeconds": 3607,
+                                "path": "token"
+                            }
+                        },
+                        {
+                            "configMap": {
+                                "items": [
+                                    {
+                                        "key": "ca.crt",
+                                        "path": "ca.crt"
+                                    }
+                                ],
+                                "name": "kube-root-ca.crt"
+                            }
+                        },
+                        {
+                            "downwardAPI": {
+                                "items": [
+                                    {
+                                        "fieldRef": {
+                                            "apiVersion": "v1",
+                                            "fieldPath": "metadata.namespace"
+                                        },
+                                        "path": "namespace"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "configMap": {
+                                "items": [
+                                    {
+                                        "key": "service-ca.crt",
+                                        "path": "service-ca.crt"
+                                    }
+                                ],
+                                "name": "openshift-service-ca.crt"
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    "status": {
+        "conditions": [
+            {
+                "lastProbeTime": null,
+                "lastTransitionTime": "2026-08-12T00:57:21Z",
+                "status": "True",
+                "type": "PodReadyToStartContainers"
+            },
+            {
+                "lastProbeTime": null,
+                "lastTransitionTime": "2026-08-12T00:57:16Z",
+                "status": "True",
+                "type": "Initialized"
+            },
+            {
+                "lastProbeTime": null,
+                "lastTransitionTime": "2026-09-11T13:23:31Z",
+                "status": "True",
+                "type": "Ready"
+            },
+            {
+                "lastProbeTime": null,
+                "lastTransitionTime": "2026-09-11T13:23:31Z",
+                "status": "True",
+                "type": "ContainersReady"
+            },
+            {
+                "lastProbeTime": null,
+                "lastTransitionTime": "2026-08-12T00:57:16Z",
+                "status": "True",
+                "type": "PodScheduled"
+            }
+        ],
+        "containerStatuses": [
+            {
+                "allocatedResources": {
+                    "cpu": "10m",
+                    "memory": "275Mi"
+                },
+                "containerID": "cri-o://276d2325b9012e41a088fd0ce3a6af7f065db3b4278f950463cb8644bd922e6d",
+                "image": "registry.redhat.io/container-native-virtualization/virt-controller-rhel9@sha256:db4f5f7a3c34a388aa2382ee60e3ba9fdabdf959e416139f206a99f52b6dab67",
+                "imageID": "registry.redhat.io/container-native-virtualization/virt-controller-rhel9@sha256:d9a57850eb1b31a01271c2b574ec2ecf88c05df555aac0ec67c6f7b41ca3c45a",
+                "lastState": {
+                    "terminated": {
+                        "containerID": "cri-o://96275b11a2cfd79e7f13de203a004eae026b3f978fe7c69119d68ce7b20732e0",
+                        "exitCode": 1,
+                        "finishedAt": "2026-09-11T13:22:41Z",
+                        "message": "matching VM for DataVolume: tomcat-ssl-cluster-disk\",\"name\":\"tomcat-ssl-cluster-disk\",\"namespace\":\"vm-migration-demo\",\"pos\":\"vm.go:2197\",\"timestamp\":\"2026-09-11T13:20:29.074338Z\",\"uid\":\"86dcfbef-ad26-4c50-9e12-85b51ee714a4\"}\n{\"component\":\"virt-controller\",\"kind\":\"DataVolume\",\"level\":\"info\",\"msg\":\"Looking for DataVolume Ref\",\"name\":\"rhel-vm\",\"namespace\":\"webhook-store\",\"pos\":\"vm.go:2186\",\"timestamp\":\"2026-09-11T13:20:29.074358Z\",\"uid\":\"e4962fb1-1329-4536-bea2-2961508b276a\"}\n{\"component\":\"virt-controller\",\"kind\":\"DataVolume\",\"level\":\"error\",\"msg\":\"Cant find the matching VM for DataVolume: rhel-vm\",\"name\":\"rhel-vm\",\"namespace\":\"webhook-store\",\"pos\":\"vm.go:2197\",\"timestamp\":\"2026-09-11T13:20:29.074372Z\",\"uid\":\"e4962fb1-1329-4536-bea2-2961508b276a\"}\n{\"component\":\"virt-controller\",\"level\":\"info\",\"msg\":\"CRD queue length: 2\",\"pos\":\"snapshot_base.go:264\",\"timestamp\":\"2026-09-11T13:20:29.910845Z\"}\n{\"component\":\"virt-controller\",\"level\":\"info\",\"msg\":\"Successfully created informer for \\\"volumesnapshots.snapshot.storage.k8s.io\\\"\",\"pos\":\"snapshot_base.go:673\",\"timestamp\":\"2026-09-11T13:20:30.011064Z\"}\n{\"component\":\"virt-controller\",\"level\":\"info\",\"msg\":\"Successfully created informer for \\\"volumesnapshotclasses.snapshot.storage.k8s.io\\\"\",\"pos\":\"snapshot_base.go:673\",\"timestamp\":\"2026-09-11T13:20:30.011151Z\"}\nE0911 13:22:41.301091       1 leaderelection.go:429] Failed to update lock optimistically: Put \"https://172.30.0.1:443/apis/coordination.k8s.io/v1/namespaces/openshift-cnv/leases/virt-controller\": context deadline exceeded, falling back to slow path\nE0911 13:22:41.301247       1 leaderelection.go:436] error retrieving resource lock openshift-cnv/virt-controller: client rate limiter Wait returned an error: context deadline exceeded\nI0911 13:22:41.301271       1 leaderelection.go:297] failed to renew lease openshift-cnv/virt-controller: context deadline exceeded\n{\"component\":\"virt-controller\",\"level\":\"info\",\"msg\":\"leaderelection lost\",\"pos\":\"stdlib.go:105\",\"timestamp\":\"2026-09-11T13:22:41.301368Z\",\"ts\":\"2026/09/11 13:22:41\"}\n",
+                        "reason": "Error",
+                        "startedAt": "2026-09-11T13:20:21Z"
+                    }
+                },
+                "name": "virt-controller",
+                "ready": true,
+                "resources": {
+                    "requests": {
+                        "cpu": "10m",
+                        "memory": "275Mi"
+                    }
+                },
+                "restartCount": 105,
+                "started": true,
+                "state": {
+                    "running": {
+                        "startedAt": "2026-09-11T13:23:10Z"
+                    }
+                },
+                "user": {
+                    "linux": {
+                        "gid": 0,
+                        "supplementalGroups": [
+                            0,
+                            1000750000
+                        ],
+                        "uid": 1000750000
+                    }
+                },
+                "volumeMounts": [
+                    {
+                        "mountPath": "/etc/virt-controller/certificates",
+                        "name": "kubevirt-controller-certs",
+                        "readOnly": true,
+                        "recursiveReadOnly": "Disabled"
+                    },
+                    {
+                        "mountPath": "/etc/virt-controller/exportca",
+                        "name": "kubevirt-export-ca",
+                        "readOnly": true,
+                        "recursiveReadOnly": "Disabled"
+                    },
+                    {
+                        "mountPath": "/profile-data",
+                        "name": "profile-data"
+                    },
+                    {
+                        "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+                        "name": "kube-api-access-vdngp",
+                        "readOnly": true,
+                        "recursiveReadOnly": "Disabled"
+                    }
+                ]
+            }
+        ],
+        "hostIP": "172.16.1.2",
+        "hostIPs": [
+            {
+                "ip": "172.16.1.2"
+            }
+        ],
+        "phase": "Running",
+        "podIP": "10.128.0.85",
+        "podIPs": [
+            {
+                "ip": "10.128.0.85"
+            }
+        ],
+        "qosClass": "Burstable",
+        "startTime": "2026-08-12T00:57:16Z"
+    }
+}

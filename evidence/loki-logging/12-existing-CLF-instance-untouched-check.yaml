@@ -1,0 +1,76 @@
+apiVersion: observability.openshift.io/v1
+kind: ClusterLogForwarder
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"observability.openshift.io/v1","kind":"ClusterLogForwarder","metadata":{"annotations":{},"name":"instance","namespace":"openshift-logging"},"spec":{"outputs":[{"loki":{"url":"http://172.16.2.252:3100"},"name":"external-loki","type":"loki"}],"pipelines":[{"inputRefs":["application","infrastructure"],"name":"forward-app-infra","outputRefs":["external-loki"]}],"serviceAccount":{"name":"collector"}}}
+  creationTimestamp: "2026-06-01T03:21:35Z"
+  generation: 3
+  name: instance
+  namespace: openshift-logging
+  resourceVersion: "1198184375"
+  uid: 9f7ec72c-41ff-47ae-b8ff-eac326ae1dd4
+spec:
+  collector:
+    resources:
+      limits:
+        cpu: "6"
+        memory: 6Gi
+      requests:
+        cpu: 500m
+        memory: 512Mi
+  managementState: Managed
+  outputs:
+  - loki:
+      url: http://172.16.2.252:3100
+    name: external-loki
+    type: loki
+  pipelines:
+  - inputRefs:
+    - application
+    - infrastructure
+    name: forward-app-infra
+    outputRefs:
+    - external-loki
+  serviceAccount:
+    name: collector
+status:
+  conditions:
+  - lastTransitionTime: "2026-06-01T03:21:35Z"
+    message: 'permitted to collect log types: [application infrastructure]'
+    reason: ClusterRolesExist
+    status: "True"
+    type: observability.openshift.io/Authorized
+  - lastTransitionTime: "2026-06-01T03:21:35Z"
+    message: ""
+    reason: ValidationSuccess
+    status: "True"
+    type: observability.openshift.io/Valid
+  - lastTransitionTime: "2026-09-11T13:06:25Z"
+    message: ""
+    reason: ReconciliationComplete
+    status: "True"
+    type: Ready
+  inputConditions:
+  - lastTransitionTime: "2026-09-11T13:27:00Z"
+    message: input "application" is valid
+    reason: ValidationSuccess
+    status: "True"
+    type: observability.openshift.io/ValidInput-application
+  - lastTransitionTime: "2026-09-11T13:27:00Z"
+    message: input "infrastructure" is valid
+    reason: ValidationSuccess
+    status: "True"
+    type: observability.openshift.io/ValidInput-infrastructure
+  outputConditions:
+  - lastTransitionTime: "2026-06-01T03:21:35Z"
+    message: output "external-loki" is valid
+    reason: ValidationSuccess
+    status: "True"
+    type: observability.openshift.io/ValidOutput-external-loki
+  pipelineConditions:
+  - lastTransitionTime: "2026-06-01T03:21:35Z"
+    message: pipeline "forward-app-infra" is valid
+    reason: ValidationSuccess
+    status: "True"
+    type: observability.openshift.io/ValidPipeline-forward-app-infra

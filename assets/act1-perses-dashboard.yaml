@@ -120,8 +120,9 @@ spec:
             name: "kubevirt_vmi_* series for this VM"
             description: >-
               Distinct time series, not metric names. vCenter's counter set is
-              fixed per statistics level (1-4), not per-VM -- the honest claim
-              is joinability, not raw count. See dashboard description.
+              fixed per statistics level (1-4), not per-VM, the honest claim
+              is joinability, not raw count. Confirmed live against vm-demo
+              in demo-vms on 2026-09-11: 61.
           plugin:
             kind: StatChart
             spec: {}
@@ -140,12 +141,24 @@ spec:
         kind: Panel
         spec:
           display:
-            name: "+ virt-launcher pod series (container_*, kube_pod_*)"
+            name: "+ virt-launcher pod series (container_*, kube_pod_*), corrected join"
             description: >-
               Joins on the virt-launcher pod's kube-state-metrics label
-              vm.kubevirt.io/name=<vm> -- a real label, not an ownerReference,
+              vm.kubevirt.io/name=<vm>, a real label, not an ownerReference,
               which is exactly why Korrel8r ships a KubeVirt-specific
               VmiToPod rule instead of relying on the generic owner-follow rule.
+              The original group_left() form of this query errors on this
+              cluster's Thanos querier ("multiple matches for labels: grouping
+              labels must ensure unique matches"), both because a live
+              migration briefly leaves two virt-launcher pods with the same
+              label, and because a __name__ regex selector combined with
+              group_left() fails on this build regardless. The fixed query
+              below uses a plain "and on(namespace,pod)" membership filter
+              instead, since this panel only ever needed a count() of the
+              joined series. Confirmed live: 345 for the pod-joined half
+              (inflated by a concurrent migration's transient second pod;
+              expect roughly half that at steady state), plus 72 from the
+              left-hand panel for the combined total.
           plugin:
             kind: StatChart
             spec: {}
@@ -162,9 +175,9 @@ spec:
                       (count({namespace="$namespace", name="$vm",
                       __name__=~"kubevirt_(vmi|vm)_.*"}) or vector(0))
                       + (count({namespace="$namespace",
-                      __name__=~"container_.*|kube_pod_.*"} * on(namespace,pod)
-                      group_left() (kube_pod_labels{namespace="$namespace",
-                      label_vm_kubevirt_io_name="$vm"} * 0 + 1)) or vector(0))
+                      __name__=~"container_.*|kube_pod_.*"} and on(namespace,pod)
+                      kube_pod_labels{namespace="$namespace",
+                      label_vm_kubevirt_io_name="$vm"}) or vector(0))
 
       cpuUsage:
         kind: Panel
@@ -219,10 +232,19 @@ spec:
         kind: Panel
         spec:
           display:
-            name: "Phase-transition latency p95 (creation -> phase)"
+            name: "Phase-transition latency p95, fleet-wide by phase (creation -> phase)"
             description: >-
               GAP vs VMware: vCenter has raw Get-VIEvent timestamps only, no
-              distribution. Native histogram, no prerequisite.
+              distribution. Native histogram, no prerequisite, but this
+              metric is emitted by virt-controller in namespace openshift-cnv
+              with a phase label and no per-VM name or namespace label at
+              all, confirmed live, so a per-VM filter can never return data
+              here; this panel is fleet-wide by phase instead. With only a
+              handful of migrations on a quiet cluster, rate() over one
+              bucket observation returns NaN; read the _sum{phase=...} and
+              _count{phase=...} series directly instead. This demo's own
+              migration: _sum=47, _count=1 for phase=Succeeded, i.e. the one
+              observation on record was exactly 47 seconds.
           plugin:
             kind: TimeSeriesChart
             spec: {}
@@ -234,9 +256,8 @@ spec:
                   spec:
                     datasource: {kind: PrometheusDatasource, name: thanosDatasource}
                     query: >-
-                      histogram_quantile(0.95, sum by (le)
-                      (rate(kubevirt_vmi_phase_transition_time_from_creation_seconds_bucket{namespace="$namespace",
-                      name="$vm"}[$__rate_interval])))
+                      histogram_quantile(0.95, sum by (le, phase)
+                      (rate(kubevirt_vmi_phase_transition_time_from_creation_seconds_bucket[$__rate_interval])))
 
       storageFlush:
         kind: Panel
@@ -462,11 +483,17 @@ spec:
         kind: Panel
         spec:
           display:
-            name: "CPU usage grouped by user-defined VM label (team)"
+            name: "CPU usage grouped by a pod label (tier)"
             description: >-
-              Requires the label allow-listed in the kubevirt-vm-labels-config
-              ConfigMap so kubevirt_vm_labels exposes label_team. This join is
-              exactly the PowerCLI-scripting case for a vCenter admin.
+              kubevirt_vm_labels does not exist on this cluster at all (0
+              series, confirmed live), so this does not go through it. The
+              working path is kube_pod_labels on the virt-launcher pod:
+              label_replace copies the pod's label_vm_kubevirt_io_name value
+              into a name label so it can join on (namespace, name) against
+              the VMI's own CPU series. tier is confirmed live on this
+              cluster's demo VMs (db, web, nonmigratable); replace it with
+              your own allow-listed pod label key. This join is exactly the
+              PowerCLI-scripting case for a vCenter admin.
           plugin:
             kind: TimeSeriesChart
             spec: {}
@@ -478,10 +505,12 @@ spec:
                   spec:
                     datasource: {kind: PrometheusDatasource, name: thanosDatasource}
                     query: >-
-                      sum by (label_team) (sum by (namespace, name)
+                      sum by (label_tier) (sum by (namespace, name)
                       (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace="$namespace"}[$__rate_interval]))
-                      * on(namespace, name) group_left(label_team)
-                      kubevirt_vm_labels{namespace="$namespace"})
+                      * on(namespace, name) group_left(label_tier)
+                      label_replace(kube_pod_labels{namespace="$namespace",
+                      label_kubevirt_io="virt-launcher"}, "name", "$1",
+                      "label_vm_kubevirt_io_name", "(.+)"))
 
     # ---------------------------------------------------------------------
     # Layout -- 24-column grid, same convention as the Grafana build.

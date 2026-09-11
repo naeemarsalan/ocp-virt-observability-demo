@@ -1,0 +1,2 @@
+     22 registry.redhat.io/container-native-virtualization/virt-launcher-rhel9@sha256:1b8b24e4059b66c35115c719ac5900ade651c92bebbce857a833c62d254e918c
+     11 registry.redhat.io/container-native-virtualization/virt-launcher-rhel9@sha256:c88c03c9af6148defc7c80e996be66f727272c09c4023f48504f0a2ea529430e

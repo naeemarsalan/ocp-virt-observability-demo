@@ -1,0 +1,1 @@
+{"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "get_objects", "arguments": {"query": "log:application:{\"namespace\":\"demo-vms\",\"labels\":{\"kubevirt.io\":\"virt-launcher\",\"vm.kubevirt.io/name\":\"vm-non-migratable\"}}", "constraint": {"limit": 5}}}}

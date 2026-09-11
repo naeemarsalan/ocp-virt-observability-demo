@@ -1,0 +1,132 @@
+LAST SEEN   TYPE      REASON                  OBJECT                                               MESSAGE
+6m17s       Normal    Scheduled               pod/netobserv-plugin-698cb544d5-47hkz                Successfully assigned netobserv/netobserv-plugin-698cb544d5-47hkz to 24-6e-96-33-24-90
+10m         Warning   FailedScheduling        pod/loki-index-gateway-0                             0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+10m         Normal    Scheduled               pod/loki-distributor-6d456f7877-lmqdq                Successfully assigned netobserv/loki-distributor-6d456f7877-lmqdq to ec-f4-bb-ed-07-a8
+10m         Warning   FailedScheduling        pod/loki-index-gateway-0                             0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+10m         Normal    Scheduled               pod/loki-index-gateway-0                             Successfully assigned netobserv/loki-index-gateway-0 to ec-f4-bb-ed-07-a8
+10m         Warning   FailedScheduling        pod/loki-ingester-0                                  0/3 nodes are available: persistentvolumeclaim "wal-loki-ingester-0" not found. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+10m         Warning   FailedScheduling        pod/loki-ingester-0                                  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+10m         Normal    Scheduled               pod/loki-gateway-7bfcb9fd97-v9ln5                    Successfully assigned netobserv/loki-gateway-7bfcb9fd97-v9ln5 to ec-f4-bb-ed-07-a8
+6m28s       Warning   FailedScheduling        pod/flowlogs-pipeline-7zr98                          0/3 nodes are available: 1 Too many pods, 2 node(s) didn't satisfy plugin(s) [NodeAffinity]. preemption: 0/3 nodes are available: 1 No preemption victims found for incoming pod, 2 Preemption is not helpful for scheduling.
+6m17s       Warning   FailedScheduling        pod/flowlogs-pipeline-7zr98                          0/3 nodes are available: 1 Too many pods, 2 node(s) didn't satisfy plugin(s) [NodeAffinity]. preemption: 0/3 nodes are available: 1 No preemption victims found for incoming pod, 2 Preemption is not helpful for scheduling.
+6m28s       Normal    Scheduled               pod/flowlogs-pipeline-wctvl                          Successfully assigned netobserv/flowlogs-pipeline-wctvl to 24-6e-96-33-24-90
+10m         Warning   FailedScheduling        pod/loki-ingester-0                                  0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+10m         Normal    Scheduled               pod/loki-ingester-0                                  Successfully assigned netobserv/loki-ingester-0 to ec-f4-bb-ed-07-a8
+3m30s       Normal    Scheduled               pod/netobserv-plugin-6c7d467565-qx66p                Successfully assigned netobserv/netobserv-plugin-6c7d467565-qx66p to 24-6e-96-33-24-90
+10m         Normal    Scheduled               pod/loki-gateway-7bfcb9fd97-bl2lp                    Successfully assigned netobserv/loki-gateway-7bfcb9fd97-bl2lp to 24-6e-96-33-24-90
+10m         Warning   FailedScheduling        pod/loki-index-gateway-0                             0/3 nodes are available: persistentvolumeclaim "storage-loki-index-gateway-0" not found. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+10m         Normal    Scheduled               pod/loki-querier-5767df7cf4-tnzzk                    Successfully assigned netobserv/loki-querier-5767df7cf4-tnzzk to ec-f4-bb-ed-07-a8
+6m28s       Normal    Scheduled               pod/flowlogs-pipeline-7nmpm                          Successfully assigned netobserv/flowlogs-pipeline-7nmpm to ec-f4-bb-ed-07-a8
+10m         Normal    Scheduled               pod/loki-query-frontend-6b64bbf4f8-t8zrz             Successfully assigned netobserv/loki-query-frontend-6b64bbf4f8-t8zrz to ec-f4-bb-ed-07-a8
+10m         Normal    Scheduled               pod/loki-compactor-0                                 Successfully assigned netobserv/loki-compactor-0 to ec-f4-bb-ed-07-a8
+10m         Warning   FailedScheduling        pod/loki-compactor-0                                 0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+10m         Warning   FailedScheduling        pod/loki-compactor-0                                 0/3 nodes are available: persistentvolumeclaim "storage-loki-compactor-0" not found. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+10m         Warning   FailedScheduling        pod/loki-compactor-0                                 0/3 nodes are available: pod has unbound immediate PersistentVolumeClaims. preemption: 0/3 nodes are available: 3 Preemption is not helpful for scheduling.
+10m         Normal    ScalingReplicaSet       deployment/loki-distributor                          Scaled up replica set loki-distributor-6d456f7877 from 0 to 1
+10m         Normal    SuccessfulCreate        replicaset/loki-distributor-6d456f7877               Created pod: loki-distributor-6d456f7877-lmqdq
+10m         Normal    AddedInterface          pod/loki-distributor-6d456f7877-lmqdq                Add eth0 [10.128.1.57/23] from ovn-kubernetes
+10m         Normal    Pulling                 pod/loki-distributor-6d456f7877-lmqdq                Pulling image "registry.redhat.io/openshift-logging/logging-loki-rhel9@sha256:e6993daf1b7287afd67fb348dc9c9cae08955869f95578b95c3eb99fbc4be263"
+10m         Normal    NoPods                  poddisruptionbudget/loki-ingester                    No matching pods found
+10m         Normal    ScalingReplicaSet       deployment/loki-querier                              Scaled up replica set loki-querier-5767df7cf4 from 0 to 1
+10m         Normal    SuccessfulCreate        replicaset/loki-querier-5767df7cf4                   Created pod: loki-querier-5767df7cf4-tnzzk
+10m         Normal    SuccessfulCreate        statefulset/loki-ingester                            create Pod loki-ingester-0 in StatefulSet loki-ingester successful
+10m         Normal    ExternalProvisioning    persistentvolumeclaim/storage-loki-ingester-0        Waiting for a volume to be created either by the external provisioner 'nfs.csi.k8s.io' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+10m         Normal    SuccessfulCreate        statefulset/loki-compactor                           create Claim storage-loki-compactor-0 Pod loki-compactor-0 in StatefulSet loki-compactor success
+10m         Normal    ProvisioningSucceeded   persistentvolumeclaim/wal-loki-ingester-0            Successfully provisioned volume pvc-e2fb2989-6b1c-4791-871c-f3e67a466588
+10m         Normal    Provisioning            persistentvolumeclaim/wal-loki-ingester-0            External provisioner is provisioning volume for claim "netobserv/wal-loki-ingester-0"
+10m         Normal    ExternalProvisioning    persistentvolumeclaim/wal-loki-ingester-0            Waiting for a volume to be created either by the external provisioner 'nfs.csi.k8s.io' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+10m         Normal    ProvisioningSucceeded   persistentvolumeclaim/storage-loki-ingester-0        Successfully provisioned volume pvc-918e3970-c315-4f9c-ad0b-fbf91d6baca2
+10m         Normal    Provisioning            persistentvolumeclaim/storage-loki-ingester-0        External provisioner is provisioning volume for claim "netobserv/storage-loki-ingester-0"
+10m         Normal    SuccessfulCreate        statefulset/loki-compactor                           create Pod loki-compactor-0 in StatefulSet loki-compactor successful
+10m         Normal    SuccessfulCreate        statefulset/loki-ingester                            create Claim storage-loki-ingester-0 Pod loki-ingester-0 in StatefulSet loki-ingester success
+10m         Normal    SuccessfulCreate        statefulset/loki-ingester                            create Claim wal-loki-ingester-0 Pod loki-ingester-0 in StatefulSet loki-ingester success
+10m         Warning   FailedCreate            statefulset/loki-ingester                            create Pod loki-ingester-0 in StatefulSet loki-ingester failed error: failed to create PVC wal-loki-ingester-0: persistentvolumeclaims "wal-loki-ingester-0" already exists
+10m         Normal    ProvisioningSucceeded   persistentvolumeclaim/storage-loki-compactor-0       Successfully provisioned volume pvc-e79f0f85-0757-4daf-b7f0-d9b1c4f637ad
+10m         Normal    SuccessfulCreate        replicaset/loki-query-frontend-6b64bbf4f8            Created pod: loki-query-frontend-6b64bbf4f8-t8zrz
+10m         Normal    Pulled                  pod/loki-distributor-6d456f7877-lmqdq                Successfully pulled image "registry.redhat.io/openshift-logging/logging-loki-rhel9@sha256:e6993daf1b7287afd67fb348dc9c9cae08955869f95578b95c3eb99fbc4be263" in 5.346s (5.346s including waiting). Image size: 323354958 bytes.
+10m         Normal    ScalingReplicaSet       deployment/loki-query-frontend                       Scaled up replica set loki-query-frontend-6b64bbf4f8 from 0 to 1
+10m         Normal    Provisioning            persistentvolumeclaim/storage-loki-compactor-0       External provisioner is provisioning volume for claim "netobserv/storage-loki-compactor-0"
+10m         Normal    ExternalProvisioning    persistentvolumeclaim/storage-loki-compactor-0       Waiting for a volume to be created either by the external provisioner 'nfs.csi.k8s.io' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+10m         Normal    Pulled                  pod/loki-querier-5767df7cf4-tnzzk                    Container image "registry.redhat.io/openshift-logging/logging-loki-rhel9@sha256:e6993daf1b7287afd67fb348dc9c9cae08955869f95578b95c3eb99fbc4be263" already present on machine
+10m         Normal    Created                 pod/loki-querier-5767df7cf4-tnzzk                    Created container: loki-querier
+10m         Normal    SuccessfulCreate        statefulset/loki-index-gateway                       create Pod loki-index-gateway-0 in StatefulSet loki-index-gateway successful
+10m         Normal    NoPods                  poddisruptionbudget/loki-index-gateway               No matching pods found
+10m         Normal    SuccessfulCreate        statefulset/loki-index-gateway                       create Claim storage-loki-index-gateway-0 Pod loki-index-gateway-0 in StatefulSet loki-index-gateway success
+10m         Normal    Started                 pod/loki-distributor-6d456f7877-lmqdq                Started container loki-distributor
+10m         Normal    Created                 pod/loki-distributor-6d456f7877-lmqdq                Created container: loki-distributor
+10m         Normal    Started                 pod/loki-querier-5767df7cf4-tnzzk                    Started container loki-querier
+10m         Normal    AddedInterface          pod/loki-querier-5767df7cf4-tnzzk                    Add eth0 [10.128.1.58/23] from ovn-kubernetes
+10m         Normal    ScalingReplicaSet       deployment/loki-gateway                              Scaled up replica set loki-gateway-7bfcb9fd97 from 0 to 2
+10m         Normal    Created                 pod/loki-query-frontend-6b64bbf4f8-t8zrz             Created container: loki-query-frontend
+10m         Normal    AddedInterface          pod/loki-ingester-0                                  Add eth0 [10.128.1.59/23] from ovn-kubernetes
+10m         Normal    SuccessfulCreate        replicaset/loki-gateway-7bfcb9fd97                   Created pod: loki-gateway-7bfcb9fd97-v9ln5
+10m         Normal    ProvisioningSucceeded   persistentvolumeclaim/storage-loki-index-gateway-0   Successfully provisioned volume pvc-4b4c8c8d-f0ab-4257-9f0b-8ffb5dbf6bf0
+10m         Normal    ExternalProvisioning    persistentvolumeclaim/storage-loki-index-gateway-0   Waiting for a volume to be created either by the external provisioner 'nfs.csi.k8s.io' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+10m         Normal    Provisioning            persistentvolumeclaim/storage-loki-index-gateway-0   External provisioner is provisioning volume for claim "netobserv/storage-loki-index-gateway-0"
+10m         Normal    Started                 pod/loki-query-frontend-6b64bbf4f8-t8zrz             Started container loki-query-frontend
+10m         Normal    Pulled                  pod/loki-query-frontend-6b64bbf4f8-t8zrz             Container image "registry.redhat.io/openshift-logging/logging-loki-rhel9@sha256:e6993daf1b7287afd67fb348dc9c9cae08955869f95578b95c3eb99fbc4be263" already present on machine
+10m         Normal    AddedInterface          pod/loki-query-frontend-6b64bbf4f8-t8zrz             Add eth0 [10.128.1.60/23] from ovn-kubernetes
+10m         Normal    SuccessfulCreate        replicaset/loki-gateway-7bfcb9fd97                   Created pod: loki-gateway-7bfcb9fd97-bl2lp
+10m         Normal    Created                 pod/loki-ingester-0                                  Created container: loki-ingester
+10m         Warning   FailedMount             pod/loki-gateway-7bfcb9fd97-v9ln5                    MountVolume.SetUp failed for volume "tls-secret" : secret "loki-gateway-http" not found
+10m         Normal    Pulled                  pod/loki-ingester-0                                  Container image "registry.redhat.io/openshift-logging/logging-loki-rhel9@sha256:e6993daf1b7287afd67fb348dc9c9cae08955869f95578b95c3eb99fbc4be263" already present on machine
+10m         Warning   FailedMount             pod/loki-gateway-7bfcb9fd97-bl2lp                    MountVolume.SetUp failed for volume "tls-secret" : secret "loki-gateway-http" not found
+10m         Normal    Started                 pod/loki-ingester-0                                  Started container loki-ingester
+10m         Normal    Pulled                  pod/loki-gateway-7bfcb9fd97-bl2lp                    Container image "registry.redhat.io/openshift-logging/lokistack-gateway-rhel9@sha256:243d0dd213621bc8c37aaa345c29f633d1440545ef9af431b092f4a9f28e27ed" already present on machine
+10m         Normal    AddedInterface          pod/loki-compactor-0                                 Add eth0 [10.128.1.61/23] from ovn-kubernetes
+10m         Normal    Pulled                  pod/loki-compactor-0                                 Container image "registry.redhat.io/openshift-logging/logging-loki-rhel9@sha256:e6993daf1b7287afd67fb348dc9c9cae08955869f95578b95c3eb99fbc4be263" already present on machine
+10m         Normal    Created                 pod/loki-compactor-0                                 Created container: loki-compactor
+10m         Normal    Started                 pod/loki-compactor-0                                 Started container loki-compactor
+10m         Normal    AddedInterface          pod/loki-index-gateway-0                             Add eth0 [10.128.1.63/23] from ovn-kubernetes
+10m         Normal    AddedInterface          pod/loki-gateway-7bfcb9fd97-bl2lp                    Add eth0 [10.130.0.218/23] from ovn-kubernetes
+10m         Normal    Started                 pod/loki-gateway-7bfcb9fd97-v9ln5                    Started container gateway
+10m         Normal    Created                 pod/loki-index-gateway-0                             Created container: loki-index-gateway
+10m         Normal    Created                 pod/loki-gateway-7bfcb9fd97-bl2lp                    Created container: gateway
+10m         Normal    Pulled                  pod/loki-gateway-7bfcb9fd97-bl2lp                    Container image "registry.redhat.io/openshift-logging/opa-openshift-rhel9@sha256:b5a936ad84333ffacab0cb970716c759b2a147ea1428ecf06ba8e8096318071c" already present on machine
+10m         Normal    Created                 pod/loki-gateway-7bfcb9fd97-v9ln5                    Created container: gateway
+10m         Normal    Started                 pod/loki-index-gateway-0                             Started container loki-index-gateway
+10m         Normal    Pulled                  pod/loki-index-gateway-0                             Container image "registry.redhat.io/openshift-logging/logging-loki-rhel9@sha256:e6993daf1b7287afd67fb348dc9c9cae08955869f95578b95c3eb99fbc4be263" already present on machine
+10m         Normal    Started                 pod/loki-gateway-7bfcb9fd97-bl2lp                    Started container gateway
+10m         Normal    AddedInterface          pod/loki-gateway-7bfcb9fd97-v9ln5                    Add eth0 [10.128.1.62/23] from ovn-kubernetes
+10m         Normal    Pulled                  pod/loki-gateway-7bfcb9fd97-v9ln5                    Container image "registry.redhat.io/openshift-logging/lokistack-gateway-rhel9@sha256:243d0dd213621bc8c37aaa345c29f633d1440545ef9af431b092f4a9f28e27ed" already present on machine
+10m         Normal    Pulled                  pod/loki-gateway-7bfcb9fd97-v9ln5                    Container image "registry.redhat.io/openshift-logging/opa-openshift-rhel9@sha256:b5a936ad84333ffacab0cb970716c759b2a147ea1428ecf06ba8e8096318071c" already present on machine
+10m         Normal    Created                 pod/loki-gateway-7bfcb9fd97-v9ln5                    Created container: opa
+10m         Normal    Started                 pod/loki-gateway-7bfcb9fd97-v9ln5                    Started container opa
+10m         Normal    Started                 pod/loki-gateway-7bfcb9fd97-bl2lp                    Started container opa
+10m         Normal    Created                 pod/loki-gateway-7bfcb9fd97-bl2lp                    Created container: opa
+9m58s       Warning   Unhealthy               pod/loki-ingester-0                                  Readiness probe failed: HTTP probe failed with statuscode: 503
+6m28s       Normal    SuccessfulCreate        daemonset/flowlogs-pipeline                          Created pod: flowlogs-pipeline-7zr98
+6m28s       Normal    SuccessfulCreate        daemonset/flowlogs-pipeline                          Created pod: flowlogs-pipeline-7nmpm
+6m28s       Normal    SuccessfulCreate        daemonset/flowlogs-pipeline                          Created pod: flowlogs-pipeline-wctvl
+6m27s       Normal    Pulling                 pod/flowlogs-pipeline-7nmpm                          Pulling image "registry.redhat.io/network-observability/network-observability-flowlogs-pipeline-rhel9@sha256:509b3bc24be91eaa46e5bd1fc4acf242e4580ce3a238319a4ab46ba3a8c48ac6"
+6m27s       Normal    AddedInterface          pod/flowlogs-pipeline-7nmpm                          Add eth0 [10.128.1.67/23] from ovn-kubernetes
+6m25s       Normal    AddedInterface          pod/flowlogs-pipeline-wctvl                          Add eth0 [10.130.0.223/23] from ovn-kubernetes
+6m23s       Normal    Pulling                 pod/flowlogs-pipeline-wctvl                          Pulling image "registry.redhat.io/network-observability/network-observability-flowlogs-pipeline-rhel9@sha256:509b3bc24be91eaa46e5bd1fc4acf242e4580ce3a238319a4ab46ba3a8c48ac6"
+6m21s       Normal    Pulled                  pod/flowlogs-pipeline-7nmpm                          Successfully pulled image "registry.redhat.io/network-observability/network-observability-flowlogs-pipeline-rhel9@sha256:509b3bc24be91eaa46e5bd1fc4acf242e4580ce3a238319a4ab46ba3a8c48ac6" in 5.975s (5.975s including waiting). Image size: 204118269 bytes.
+6m19s       Normal    ScalingReplicaSet       deployment/netobserv-plugin                          Scaled up replica set netobserv-plugin-698cb544d5 from 0 to 1
+6m18s       Normal    SuccessfulCreate        replicaset/netobserv-plugin-698cb544d5               Created pod: netobserv-plugin-698cb544d5-47hkz
+6m8s        Warning   FailedMount             pod/netobserv-plugin-698cb544d5-47hkz                MountVolume.SetUp failed for volume "netobserv-plugin-cert" : secret "netobserv-plugin-cert" not found
+6m1s        Normal    Pulled                  pod/flowlogs-pipeline-wctvl                          Successfully pulled image "registry.redhat.io/network-observability/network-observability-flowlogs-pipeline-rhel9@sha256:509b3bc24be91eaa46e5bd1fc4acf242e4580ce3a238319a4ab46ba3a8c48ac6" in 22.252s (22.252s including waiting). Image size: 204118269 bytes.
+5m58s       Normal    AddedInterface          pod/netobserv-plugin-698cb544d5-47hkz                Add eth0 [10.130.0.226/23] from ovn-kubernetes
+5m56s       Normal    Pulling                 pod/netobserv-plugin-698cb544d5-47hkz                Pulling image "registry.redhat.io/network-observability/network-observability-console-plugin-pf5-rhel9@sha256:d6a564af308c293270d8fead446e236798f27bd0b9cf5130e2616fdac86b9e21"
+5m55s       Warning   BackOff                 pod/flowlogs-pipeline-wctvl                          Back-off restarting failed container flowlogs-pipeline in pod flowlogs-pipeline-wctvl_netobserv(02072411-fdd5-49a4-a022-061a0df86d3d)
+5m46s       Warning   BackOff                 pod/flowlogs-pipeline-7nmpm                          Back-off restarting failed container flowlogs-pipeline in pod flowlogs-pipeline-7nmpm_netobserv(796614e9-0f41-4b08-8f49-e79a0d9e9796)
+5m36s       Normal    Pulled                  pod/netobserv-plugin-698cb544d5-47hkz                Successfully pulled image "registry.redhat.io/network-observability/network-observability-console-plugin-pf5-rhel9@sha256:d6a564af308c293270d8fead446e236798f27bd0b9cf5130e2616fdac86b9e21" in 20.539s (20.539s including waiting). Image size: 240232128 bytes.
+5m36s       Normal    Pulled                  pod/flowlogs-pipeline-wctvl                          Container image "registry.redhat.io/network-observability/network-observability-flowlogs-pipeline-rhel9@sha256:509b3bc24be91eaa46e5bd1fc4acf242e4580ce3a238319a4ab46ba3a8c48ac6" already present on machine
+5m35s       Normal    Created                 pod/flowlogs-pipeline-wctvl                          Created container: flowlogs-pipeline
+5m34s       Normal    Started                 pod/flowlogs-pipeline-wctvl                          Started container flowlogs-pipeline
+5m34s       Normal    Created                 pod/netobserv-plugin-698cb544d5-47hkz                Created container: netobserv-plugin
+5m34s       Normal    Started                 pod/netobserv-plugin-698cb544d5-47hkz                Started container netobserv-plugin
+5m33s       Normal    Pulled                  pod/flowlogs-pipeline-7nmpm                          Container image "registry.redhat.io/network-observability/network-observability-flowlogs-pipeline-rhel9@sha256:509b3bc24be91eaa46e5bd1fc4acf242e4580ce3a238319a4ab46ba3a8c48ac6" already present on machine
+5m33s       Normal    Created                 pod/flowlogs-pipeline-7nmpm                          Created container: flowlogs-pipeline
+5m33s       Normal    Started                 pod/flowlogs-pipeline-7nmpm                          Started container flowlogs-pipeline
+3m31s       Normal    SuccessfulCreate        replicaset/netobserv-plugin-6c7d467565               Created pod: netobserv-plugin-6c7d467565-qx66p
+3m31s       Normal    ScalingReplicaSet       deployment/netobserv-plugin                          Scaled up replica set netobserv-plugin-6c7d467565 from 0 to 1
+3m30s       Normal    ScalingReplicaSet       deployment/netobserv-plugin                          Scaled down replica set netobserv-plugin-6c7d467565 from 1 to 0
+3m29s       Normal    Pulling                 pod/netobserv-plugin-6c7d467565-qx66p                Pulling image "registry.redhat.io/network-observability/network-observability-console-plugin-pf4-rhel9@sha256:e1f84c247b95b9dd63a564ace4ff85b97efe1055991d763ad606a249dc59804d"
+3m29s       Normal    AddedInterface          pod/netobserv-plugin-6c7d467565-qx66p                Add eth0 [10.130.0.227/23] from ovn-kubernetes
+3m29s       Normal    SuccessfulDelete        replicaset/netobserv-plugin-6c7d467565               Deleted pod: netobserv-plugin-6c7d467565-qx66p
+3m1s        Normal    Pulled                  pod/netobserv-plugin-6c7d467565-qx66p                Successfully pulled image "registry.redhat.io/network-observability/network-observability-console-plugin-pf4-rhel9@sha256:e1f84c247b95b9dd63a564ace4ff85b97efe1055991d763ad606a249dc59804d" in 27.28s (27.28s including waiting). Image size: 193814214 bytes.
+3m1s        Normal    Created                 pod/netobserv-plugin-6c7d467565-qx66p                Created container: netobserv-plugin
+3m          Normal    Started                 pod/netobserv-plugin-6c7d467565-qx66p                Started container netobserv-plugin
+3m          Normal    Killing                 pod/netobserv-plugin-6c7d467565-qx66p                Stopping container netobserv-plugin

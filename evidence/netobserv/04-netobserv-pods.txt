@@ -1,0 +1,15 @@
+NAME                                   READY   STATUS    RESTARTS        AGE     IP             NODE                NOMINATED NODE   READINESS GATES
+flowlogs-pipeline-7nmpm                1/1     Running   3 (5m36s ago)   6m      10.128.1.67    ec-f4-bb-ed-07-a8   <none>           <none>
+flowlogs-pipeline-7zr98                0/1     Pending   0               6m      <none>         <none>              <none>           <none>
+flowlogs-pipeline-wctvl                1/1     Running   2 (5m29s ago)   6m      10.130.0.223   24-6e-96-33-24-90   <none>           <none>
+loki-compactor-0                       1/1     Running   0               10m     10.128.1.61    ec-f4-bb-ed-07-a8   <none>           <none>
+loki-distributor-6d456f7877-lmqdq      1/1     Running   0               10m     10.128.1.57    ec-f4-bb-ed-07-a8   <none>           <none>
+loki-gateway-7bfcb9fd97-bl2lp          2/2     Running   0               10m     10.130.0.218   24-6e-96-33-24-90   <none>           <none>
+loki-gateway-7bfcb9fd97-v9ln5          2/2     Running   0               10m     10.128.1.62    ec-f4-bb-ed-07-a8   <none>           <none>
+loki-index-gateway-0                   1/1     Running   0               10m     10.128.1.63    ec-f4-bb-ed-07-a8   <none>           <none>
+loki-ingester-0                        1/1     Running   0               10m     10.128.1.59    ec-f4-bb-ed-07-a8   <none>           <none>
+loki-querier-5767df7cf4-tnzzk          1/1     Running   0               10m     10.128.1.58    ec-f4-bb-ed-07-a8   <none>           <none>
+loki-query-frontend-6b64bbf4f8-t8zrz   1/1     Running   0               10m     10.128.1.60    ec-f4-bb-ed-07-a8   <none>           <none>
+netobserv-plugin-698cb544d5-47hkz      1/1     Running   0               5m50s   10.130.0.226   24-6e-96-33-24-90   <none>           <none>
+NAME                DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE    CONTAINERS          IMAGES                                                                                                                                                           SELECTOR
+flowlogs-pipeline   3         3         2       3            2           <none>          6m4s   flowlogs-pipeline   registry.redhat.io/network-observability/network-observability-flowlogs-pipeline-rhel9@sha256:509b3bc24be91eaa46e5bd1fc4acf242e4580ce3a238319a4ab46ba3a8c48ac6   app=flowlogs-pipeline

@@ -1,0 +1,2 @@
+{"start":{"queries":["k8s:VirtualMachineInstance.v1.kubevirt.io:{\"namespace\":\"demo-vms\",\"name\":\"vm-non-migratable\"}"]},
+ "goals":["k8s:Pod.v1","log:application","netflow:network","metric:metric","k8s:Node.v1","alert:alert","k8s:PersistentVolumeClaim.v1"]}

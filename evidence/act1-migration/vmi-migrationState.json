@@ -1,0 +1,31 @@
+{
+  "completed": true,
+  "endTimestamp": "2026-09-11T13:38:31Z",
+  "migrationConfiguration": {
+    "allowAutoConverge": false,
+    "allowPostCopy": false,
+    "allowWorkloadDisruption": false,
+    "bandwidthPerMigration": "0",
+    "completionTimeoutPerGiB": 150,
+    "nodeDrainTaintKey": "kubevirt.io/drain",
+    "parallelMigrationsPerCluster": 5,
+    "parallelOutboundMigrationsPerNode": 2,
+    "progressTimeout": 150,
+    "unsafeMigrationOverride": false
+  },
+  "migrationUid": "69aa2389-ca18-41ec-9a05-8717db3d397f",
+  "mode": "PreCopy",
+  "sourceNode": "ec-f4-bb-ed-07-a8",
+  "sourcePod": "virt-launcher-vm-demo-fx5hg",
+  "startTimestamp": "2026-09-11T13:38:17Z",
+  "targetDirectMigrationNodePorts": {
+    "40877": 0,
+    "41387": 49152,
+    "45517": 49153
+  },
+  "targetNode": "24-6e-96-33-24-90",
+  "targetNodeAddress": "10.130.0.131",
+  "targetNodeDomainDetected": true,
+  "targetNodeDomainReadyTimestamp": "2026-09-11T13:38:31Z",
+  "targetPod": "virt-launcher-vm-demo-b5lpj"
+}

@@ -28,3 +28,11 @@ Plain list. Pick whatever you know best. Comments in a PR or just tell me.
 10. The Grafana JSON and the Perses dashboard CR have not been loaded anywhere. Perses in particular: I could not find a complete public sample of the CR schema, so expect to fix fields.
 11. Read the objection table in `4-narrative-and-objections.md`, especially the answers on the Principled Technologies benchmark and on "Aria has PromQL too." If you know VMware well and either answer sounds wrong or thin, say so.
 12. Anything that reads as overclaiming. The whole package is meant to survive a skeptical vSphere architect. If a line would not, it should go.
+
+## Added after the live run (2026-09-11)
+
+13. Everything is still deployed on the lab cluster. `assets/teardown.sh --dry-run` shows what would go. Tell me if you'd rather it stay up for a while or come down now.
+14. The evidence folder was scrubbed: the object-store secret, other tenants' VM names and one cloud-init password were removed, and lab hostnames were replaced. If you spot anything that should not be public, say so and I will rewrite history rather than just delete.
+15. Two engines were compared: the operator's korrel8r 0.11.1 and upstream 0.12.1 run side by side in the demo namespace. Is that a fair comparison to show a customer, or should the demo only use what ships?
+16. The 24-hour outdated-workloads alert never fires on this cluster because virt-controller keeps restarting on leader-election timeouts. That looks like a real problem on the lab cluster, separate from the demo. Someone who owns it should look.
+17. The reference-architecture page (`reference-architecture.html`) was generated from a template with the run's numbers. Check the storyboard captions against the evidence folder; if a number feels off, the file it came from is named in the page's measurement table.

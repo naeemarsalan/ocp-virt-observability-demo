@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenShift Virtualization observability, reference architecture</title>
+<style>
+  /* fonts:begin */
+  /* system font stack by default — scripts/embed_fonts.py --inject replaces this block */
+  /* fonts:end */
+  /* KEEP: tokens — light, then dark via media query, then explicit host-toggle overrides */
+  :root {
+    --bg:#F1F1F1; --surface:#FFFFFF; --band:#E6E6E6; --zone:#EBEBEB; --subzone:#F7F7F7;
+    --ink:#151515; --ink2:#4C4C4C; --ink3:#595959; --line:#C7C7C7; --line-soft:#DBDBDB;
+    --zone-a:#1D4174; --zone-b:#4CB6D6;
+    --flow-1:#D97E13; --flow-2:#5E40BE; --flow-3:#2E93B8;
+    --ok:#63993D; --meter-bg:#EAEAEA;
+  }
+  @media (prefers-color-scheme: dark) { :root {
+    --bg:#1B1B1B; --surface:#292929; --band:#141414; --zone:#232323; --subzone:#1F1F1F;
+    --ink:#F2F2F2; --ink2:#C7C7C7; --ink3:#A3A3A3; --line:#4D4D4D; --line-soft:#3A3A3A;
+    --zone-a:#6B93CB; --zone-b:#4CB6D6;
+    --flow-1:#FAAA4F; --flow-2:#9B85E8; --flow-3:#5BC0DE;
+    --ok:#8CC152; --meter-bg:#333333;
+  } }
+  :root[data-theme="light"] {
+    --bg:#F1F1F1; --surface:#FFFFFF; --band:#E6E6E6; --zone:#EBEBEB; --subzone:#F7F7F7;
+    --ink:#151515; --ink2:#4C4C4C; --ink3:#595959; --line:#C7C7C7; --line-soft:#DBDBDB;
+    --zone-a:#1D4174; --zone-b:#4CB6D6;
+    --flow-1:#D97E13; --flow-2:#5E40BE; --flow-3:#2E93B8;
+    --ok:#63993D; --meter-bg:#EAEAEA;
+  }
+  :root[data-theme="dark"] {
+    --bg:#1B1B1B; --surface:#292929; --band:#141414; --zone:#232323; --subzone:#1F1F1F;
+    --ink:#F2F2F2; --ink2:#C7C7C7; --ink3:#A3A3A3; --line:#4D4D4D; --line-soft:#3A3A3A;
+    --zone-a:#6B93CB; --zone-b:#4CB6D6;
+    --flow-1:#FAAA4F; --flow-2:#9B85E8; --flow-3:#5BC0DE;
+    --ok:#8CC152; --meter-bg:#333333;
+  }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-size:16px; line-height:1.5;
+    font-family:-apple-system,'Segoe UI',Roboto,'Noto Sans',sans-serif; }
+  .mono { font-family:ui-monospace,'Cascadia Mono',Menlo,Consolas,monospace; }
+  .shell { max-width:1140px; margin:0 auto; padding:0 20px; }
+  header { background:var(--surface); border-bottom:1px solid var(--line-soft); padding:26px 0 20px; }
+  h1 { font-size:clamp(22px,3.5vw,30px); margin:0 0 6px; letter-spacing:-0.01em; }
+  .sub { color:var(--ink2); margin:0; max-width:70ch; }
+  main { padding:28px 0 48px; }
+
+  .player { background:var(--surface); border:1px solid var(--line-soft); }
+  .controls { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:12px 16px;
+    border-bottom:1px solid var(--line-soft); }
+  .controls button { font:inherit; font-weight:700; font-size:14px; background:var(--surface);
+    color:var(--ink); border:1px solid var(--line); padding:7px 15px; cursor:pointer; border-radius:2px; }
+  .controls button:hover { border-color:var(--ink2); }
+  .controls button:focus-visible { outline:2px solid var(--flow-3); outline-offset:2px; }
+  .stepnum { font-size:13.5px; color:var(--ink3); min-width:90px; text-align:center;
+    font-variant-numeric:tabular-nums; }
+  .dots { display:flex; flex-wrap:wrap; gap:6px; padding:10px 16px; }
+  .dots button { width:22px; height:8px; padding:0; border:none; background:var(--line-soft);
+    cursor:pointer; border-radius:1px; }
+  .dots button[aria-current="true"] { background:var(--flow-2); }
+  .dots button:focus-visible { outline:2px solid var(--flow-3); }
+
+  .stagewrap { overflow-x:auto; }
+  .stagewrap svg { display:block; min-width:1000px; width:100%; height:auto; }
+  svg text { font-family:inherit; fill:var(--ink); }
+  .zone   { fill:var(--zone); stroke:var(--zone-a); stroke-width:2; }
+  .subz   { fill:var(--subzone); stroke:var(--zone-b); stroke-width:1.6; }
+  .zlabel { font-size:11.5px; font-weight:700; letter-spacing:0.09em; fill:var(--ink2); }
+  .zsub   { font-size:10.5px; fill:var(--ink3); }
+  .node   { fill:var(--surface); stroke:var(--line); stroke-width:1.2; transition:stroke 0.3s; }
+  .frame  { fill:none; stroke:var(--line); stroke-width:1.2; stroke-dasharray:4 4; transition:stroke 0.3s; }
+  .ntitle { font-size:12.5px; font-weight:700; }
+  .nsub   { font-size:10.8px; fill:var(--ink2); }
+  .nport  { font-size:10.3px; fill:var(--ink3); }
+  .counter { font-size:12.5px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .flow   { fill:none; stroke-width:3; stroke-linejoin:round; opacity:0.16; transition:opacity 0.3s; }
+  .flow.on { opacity:1; }
+  .flow.p1 { stroke:var(--flow-1); }
+  .flow.p2 { stroke:var(--flow-2); }
+  .flow.p3 { stroke:var(--flow-3); }
+  .flabel { font-size:10.6px; }
+  .flabel.p1 { fill:var(--flow-1); } .flabel.p2 { fill:var(--flow-2); } .flabel.p3 { fill:var(--flow-3); }
+  .hot rect.node, rect.node.hot, .hot rect.frame { stroke:var(--flow-2); stroke-width:2.4; }
+  .ghost { opacity:0; transition:opacity 0.4s; }
+  .ghost.shown { opacity:1; }
+  .chip { fill:color-mix(in srgb, var(--ok) 20%, var(--surface)); stroke:var(--ok); stroke-width:1.2; }
+  .chiplabel { font-size:9.8px; fill:var(--ink2); }
+  .meter-track { fill:var(--meter-bg); stroke:var(--line); stroke-width:0.6; }
+  .meter-fill { fill:var(--flow-1); }
+  .anim-dot.p1 { fill:var(--flow-1); } .anim-dot.p2 { fill:var(--flow-2); } .anim-dot.p3 { fill:var(--flow-3); }
+
+  .caption { padding:16px 20px 20px; border-top:1px solid var(--line-soft); min-height:104px; }
+  .caption .ct { font-weight:700; font-size:16.5px; margin:0 0 6px; }
+  .caption .cb { font-size:14.6px; color:var(--ink2); margin:0; max-width:95ch; }
+  .legendband { background:var(--band); border-top:1px solid var(--line-soft); display:flex;
+    flex-wrap:wrap; gap:10px 26px; padding:12px 18px; font-size:13px; color:var(--ink2); }
+  .legendband .sw { display:inline-block; width:26px; height:10px; margin-right:8px; vertical-align:middle; }
+  footer { padding:18px 0 30px; font-size:13px; color:var(--ink3); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .flow, .ghost, .node, .frame { transition:none; }
+  }
+  /* page additions (tokens only) */
+  .meta { display:flex; flex-wrap:wrap; gap:8px 18px; margin:10px 0 0; font-size:13px; color:var(--ink3); }
+  .meta span { white-space:nowrap; }
+  h2 { font-size:20px; margin:34px 0 8px; letter-spacing:-0.01em; }
+  h2:first-child { margin-top:0; }
+  .lead { color:var(--ink2); margin:0 0 14px; max-width:80ch; }
+  .tiers { display:grid; gap:10px; }
+  .tier { background:var(--surface); border:1px solid var(--line-soft); padding:12px 14px; display:grid; grid-template-columns:170px 1fr; gap:14px; align-items:start; }
+  .tier .tl { font-size:11.5px; font-weight:700; letter-spacing:0.09em; color:var(--ink2); padding-top:6px; }
+  .tier .tl small { display:block; font-weight:400; letter-spacing:0; font-size:12px; color:var(--ink3); margin-top:4px; }
+  .cards { display:flex; flex-wrap:wrap; gap:8px; }
+  .card { border:1px solid var(--line); background:var(--surface); padding:8px 10px; min-width:150px; max-width:260px; font-size:13px; }
+  .card b { display:block; font-size:13.5px; }
+  .card span { color:var(--ink2); }
+  .card.dashed { border-style:dashed; }
+  table { border-collapse:collapse; width:100%; background:var(--surface); font-size:14px; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--line-soft); }
+  th { font-size:12.5px; letter-spacing:0.04em; color:var(--ink2); background:var(--band); }
+  .tw { overflow-x:auto; border:1px solid var(--line-soft); }
+  .note { font-size:13px; color:var(--ink3); margin:8px 0 0; }
+  @media (max-width:720px) { .tier { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+
+<header><div class="shell">
+  <h1>OpenShift Virtualization observability, reference architecture</h1>
+  <p class="sub">A virtual machine's metrics, logs and network flows land in the same open, label-indexed stores as every pod and node on the cluster. That is what lets you join them with PromQL, walk from an alert to the VM to its pod to its logs in one graph, and drive the same automation you already use for containers.</p>
+  <div class="meta">
+    <span>Live run: 2026-09-11</span><span>OpenShift 4.20.32</span><span>OpenShift Virtualization 4.20.24</span>
+    <span>Cluster Observability Operator 1.5.2 (korrel8r 0.11.1)</span><span>Logging 6.5.2 / Loki Operator 6.6.1</span>
+    <span>Network Observability 1.12.2</span><span>korrel8r 0.12.1 upstream, side by side</span>
+  </div>
+</div></header>
+
+<main class="shell">
+
+<h2>1. Logical view</h2>
+<p class="lead">Four tiers. The only VM-specific piece is at the top; everything below it is the ordinary OpenShift observability stack, which is the point.</p>
+<div class="tiers">
+  <div class="tier"><div class="tl">WORKLOADS<small>VMs are pods with a label</small></div><div class="cards">
+    <div class="card"><b>VirtualMachine / VMI</b><span>QEMU/KVM in a virt-launcher pod. Label <span class="mono">vm.kubevirt.io/name</span>, no ownerReference.</span></div>
+    <div class="card"><b>qemu-guest-agent</b><span>Guest filesystem, load, IPs. Same dependency VMware Tools has.</span></div>
+    <div class="card"><b>virt-handler</b><span>Exports <span class="mono">kubevirt_vmi_*</span> per VM: 61 series for one idle VM in this run.</span></div>
+    <div class="card"><b>Containers, nodes</b><span>Share the namespace, name, node and pod labels the VM series carry.</span></div>
+  </div></div>
+  <div class="tier"><div class="tl">OPEN STORES<small>one of each, not one per product</small></div><div class="cards">
+    <div class="card"><b>Prometheus / Thanos</b><span>Metrics. PromQL over VMs, pods and nodes together.</span></div>
+    <div class="card"><b>Alertmanager</b><span>KubeVirt ships 80 alert rules; they route like any other alert.</span></div>
+    <div class="card"><b>LokiStack (logs)</b><span>virt-launcher logs via the Vector collector. 30 day default retention.</span></div>
+    <div class="card"><b>LokiStack (netflows)</b><span>eBPF agent to flowlogs-pipeline. Separate tenant, separate stack.</span></div>
+    <div class="card dashed"><b>Tempo (traces)</b><span>Optional. Not used by the VM walk.</span></div>
+  </div></div>
+  <div class="tier"><div class="tl">CORRELATION<small>Cluster Observability Operator</small></div><div class="cards">
+    <div class="card"><b>Korrel8r</b><span>Rule engine. Turns one object into queries for the next: alert to VMI, VMI to pod, pod to logs, metrics, flows.</span></div>
+    <div class="card"><b>Troubleshooting panel</b><span>Console UI plugin. Signal Correlation, then Focus on the page you are on.</span></div>
+    <div class="card"><b>Perses / Grafana</b><span>Dashboards. Customisable, namespace-scoped in Perses.</span></div>
+  </div></div>
+  <div class="tier"><div class="tl">CONSUMERS<small>same interfaces for VMs and pods</small></div><div class="cards">
+    <div class="card"><b>Operator in the console</b><span>Alert to root cause in one graph.</span></div>
+    <div class="card"><b>Automation</b><span>Alertmanager webhook to Event-Driven Ansible or a GitOps reconciler. Illustrative here.</span></div>
+    <div class="card dashed"><b>AI agent over MCP</b><span>Same engine, same rules, over <span class="mono">/mcp</span>. Upstream 0.12.1, experimental.</span></div>
+  </div></div>
+</div>
+
+<h2>2. One incident, step by step</h2>
+<p class="lead">A VM that cannot be evicted. Every number below is from the run on 2026-09-11; nothing is illustrative except where the caption says so.</p>
+<div class="player">
+  <div class="controls">
+    <button id="btn-prev" aria-label="Previous step">◀ Prev</button>
+    <button id="btn-next" aria-label="Next step">Next ▶</button>
+    <button id="btn-play" aria-pressed="false" aria-label="Autoplay">▶ Play</button>
+    <button id="btn-link" aria-label="Copy a direct link to this step">Copy step link</button>
+    <span class="stepnum" id="stepnum">Step 1 / 10</span>
+  </div>
+  <div class="dots" id="stepdots" role="group" aria-label="Steps"></div>
+
+  <div class="stagewrap">
+  <svg id="stage" viewBox="0 0 1200 580" role="img" aria-label="Architecture stage: worker nodes, open stores, correlation, consumers">
+    <rect class="zone" x="30" y="40" width="300" height="520"></rect>
+    <text class="zlabel" x="44" y="64">WORKER NODES (×3)</text>
+    <text class="zsub" x="44" y="79">bare metal · KVM · OVN-Kubernetes</text>
+
+    <g id="b-vm"><rect class="node" x="50" y="90" width="260" height="110"></rect>
+      <text class="ntitle" x="60" y="108">vm-non-migratable</text>
+      <text class="nsub" x="60" y="124">VMI in a virt-launcher pod</text>
+      <text class="nport mono" x="60" y="140">QEMU/KVM · qemu-guest-agent</text>
+      <text class="nsub" x="60" y="156">RWO block disk · LiveMigrate</text>
+      <text class="nport mono" x="60" y="172">label vm.kubevirt.io/name</text></g>
+
+    <g id="b-vh"><rect class="node" x="50" y="230" width="260" height="70"></rect>
+      <text class="ntitle" x="60" y="248">virt-handler exporter</text>
+      <text class="nsub" x="60" y="264">61 kubevirt_vmi_* series for this VM</text>
+      <text class="nport mono" x="60" y="280">/metrics 8443 · scraped every 30 s</text></g>
+
+    <g id="b-col"><rect class="node" x="50" y="330" width="260" height="70"></rect>
+      <text class="ntitle" x="60" y="348">log collector (Vector)</text>
+      <text class="nsub" x="60" y="364">virt-launcher stdout, JSON</text>
+      <text class="nport mono" x="60" y="380">to LokiStack gateway 8080</text></g>
+
+    <g id="b-ebpf"><rect class="node" x="50" y="430" width="260" height="70"></rect>
+      <text class="ntitle" x="60" y="448">netobserv eBPF agent</text>
+      <text class="nsub" x="60" y="464">packets on the pod interface</text>
+      <text class="nport mono" x="60" y="480">to flowlogs-pipeline</text></g>
+
+    <rect class="zone" x="370" y="40" width="290" height="520"></rect>
+    <text class="zlabel" x="384" y="64">OPEN STORES</text>
+    <text class="zsub" x="384" y="79">the same stores pods and nodes use</text>
+
+    <g id="b-prom"><rect class="node" x="390" y="90" width="250" height="90"></rect>
+      <text class="ntitle" x="400" y="108">Prometheus / Thanos</text>
+      <text class="nsub" x="400" y="124">one TSDB for VMs, pods, nodes</text>
+      <text class="counter" x="400" y="144">series in graph: <tspan id="c-series">0</tspan></text>
+      <text class="nport mono" x="400" y="162">PromQL · thanos-querier 9091</text></g>
+
+    <g id="b-am"><rect class="node" x="390" y="210" width="250" height="70"></rect>
+      <text class="ntitle" x="400" y="228">Alertmanager</text>
+      <text class="counter" x="400" y="248">firing: <tspan id="c-alerts">0</tspan></text>
+      <text class="nport mono" x="400" y="266">VMCannotBeEvicted · warning · 9094</text></g>
+
+    <g id="b-loki"><rect class="node" x="390" y="310" width="250" height="80"></rect>
+      <text class="ntitle" x="400" y="328">LokiStack (logs)</text>
+      <text class="nsub" x="400" y="344">application tenant · gateway 8080</text>
+      <text class="counter" x="400" y="366">log lines: <tspan id="c-logs">0</tspan></text></g>
+
+    <g id="b-nflow"><rect class="node" x="390" y="420" width="250" height="80"></rect>
+      <text class="ntitle" x="400" y="438">LokiStack (netflows)</text>
+      <text class="nsub" x="400" y="454">network tenant via flowlogs-pipeline</text>
+      <text class="counter" x="400" y="476">flows: <tspan id="c-flows">0</tspan></text></g>
+
+    <rect class="zone" x="700" y="40" width="290" height="520"></rect>
+    <text class="zlabel" x="714" y="64">CORRELATION</text>
+    <text class="zsub" x="714" y="79">Cluster Observability Operator</text>
+
+    <g id="b-k8r"><rect class="node" x="720" y="90" width="250" height="100"></rect>
+      <text class="ntitle" x="730" y="108">Korrel8r</text>
+      <text class="nsub" x="730" y="124">alert, k8s, log, metric, netflow</text>
+      <text class="nport mono" x="730" y="140">0.11.1: 47 rules · 0.12.1: 104 rules</text>
+      <text class="nport mono" x="730" y="156">REST /api/v1alpha1 · MCP /mcp</text>
+      <text class="nsub" x="730" y="172">walk time: <tspan id="c-time">–</tspan></text></g>
+
+    <g id="b-graph"><rect class="frame" x="720" y="220" width="250" height="300"></rect>
+      <text class="ntitle" x="730" y="238">Troubleshooting panel graph</text>
+      <text class="counter" x="730" y="258">nodes: <tspan id="c-nodes">0</tspan></text>
+      <rect class="meter-track" x="730" y="266" width="230" height="10"></rect>
+      <rect class="meter-fill" id="meter" x="730" y="266" width="0" height="10"></rect>
+      <g id="g-c-alert" class="ghost"><rect class="chip" x="730" y="290" width="100" height="36"></rect><text class="chiplabel" x="738" y="313">alert</text></g>
+      <g id="g-c-vmi" class="ghost"><rect class="chip" x="850" y="290" width="100" height="36"></rect><text class="chiplabel" x="858" y="313">VMI</text></g>
+      <g id="g-c-pod" class="ghost"><rect class="chip" x="730" y="335" width="100" height="36"></rect><text class="chiplabel" x="738" y="358">pod</text></g>
+      <g id="g-c-node" class="ghost"><rect class="chip" x="850" y="335" width="100" height="36"></rect><text class="chiplabel" x="858" y="358">node</text></g>
+      <g id="g-c-pvc" class="ghost"><rect class="chip" x="730" y="380" width="100" height="36"></rect><text class="chiplabel" x="738" y="403">PVC</text></g>
+      <g id="g-c-logs" class="ghost"><rect class="chip" x="850" y="380" width="100" height="36"></rect><text class="chiplabel" x="858" y="403">logs 100</text></g>
+      <g id="g-c-metrics" class="ghost"><rect class="chip" x="730" y="425" width="100" height="36"></rect><text class="chiplabel" x="738" y="448">metrics 296</text></g>
+      <g id="g-c-flows" class="ghost"><rect class="chip" x="850" y="425" width="100" height="36"></rect><text class="chiplabel" x="858" y="448">flow 1</text></g>
+      <text class="nport mono" x="730" y="482">alert → VM/VMI → pod → node, PVC</text>
+      <text class="nsub" x="730" y="498">then logs, metrics, flows</text>
+      <text class="nport mono" x="730" y="512">6.8 s from a firing alert</text></g>
+
+    <rect class="zone" x="1020" y="40" width="160" height="520"></rect>
+    <text class="zlabel" x="1034" y="64">CONSUMERS</text>
+
+    <g id="b-console"><rect class="node" x="1030" y="90" width="140" height="80"></rect>
+      <text class="ntitle" x="1040" y="108">Console</text>
+      <text class="nsub" x="1040" y="124">operator · Focus</text>
+      <text class="nport mono" x="1040" y="140">to korrel8r 9443</text></g>
+
+    <g id="b-agent"><rect class="node" x="1030" y="220" width="140" height="80"></rect>
+      <text class="ntitle" x="1040" y="238">AI agent</text>
+      <text class="nsub" x="1040" y="254">MCP client</text>
+      <text class="nport mono" x="1040" y="270">/mcp (upstream)</text></g>
+
+    <g id="b-auto"><rect class="node" x="1030" y="350" width="140" height="90"></rect>
+      <text class="ntitle" x="1040" y="368">Automation</text>
+      <text class="nsub" x="1040" y="384">webhook receiver</text>
+      <text class="nport mono" x="1040" y="400">EDA / GitOps</text>
+      <text class="nsub" x="1040" y="416">illustrative</text></g>
+
+    <path class="flow p1" id="f-scrape" d="M310,265 H342 V135 H390"></path>
+    <text class="flabel p1" x="346" y="205">scrape</text>
+    <path class="flow p1" id="f-logs"   d="M310,365 H350 V350 H390"></path>
+    <path class="flow p1" id="f-flows"  d="M310,465 H358 V460 H390"></path>
+    <path class="flow p3" id="f-alert"  d="M515,180 V210"></path>
+    <text class="flabel p3" x="524" y="200">for 1m → firing</text>
+    <path class="flow p2" id="f-k8r-prom"  d="M720,135 H640"></path>
+    <path class="flow p2" id="f-k8r-am"    d="M720,150 H680 V245 H640"></path>
+    <path class="flow p2" id="f-k8r-loki"  d="M720,165 H690 V350 H640"></path>
+    <path class="flow p2" id="f-k8r-nflow" d="M720,180 H698 V460 H640"></path>
+    <path class="flow p2" id="f-console" d="M1030,130 H970"></path>
+    <text class="flabel p2" x="985" y="124">Focus</text>
+    <path class="flow p2" id="f-mcp"     d="M1030,260 H1005 V170 H970"></path>
+    <text class="flabel p2" x="1009" y="215">MCP</text>
+    <path class="flow p3" id="f-auto"    d="M640,270 H668 V540 H1005 V395 H1030"></path>
+    <text class="flabel p3" x="676" y="553">webhook</text>
+  </svg>
+  </div>
+
+  <div class="caption" aria-live="polite">
+    <p class="ct" id="cap-title"></p>
+    <p class="cb" id="cap-body"></p>
+  </div>
+  <div class="legendband">
+    <span><span class="sw" style="background:var(--flow-1)"></span>Telemetry plane: scrape, logs, flows</span>
+    <span><span class="sw" style="background:var(--flow-2)"></span>Correlation plane: Korrel8r queries</span>
+    <span><span class="sw" style="background:var(--flow-3)"></span>Alert and automation plane</span>
+  </div>
+</div>
+
+<h2>3. Components and ports</h2>
+<div class="tw"><table>
+<tr><th>Component</th><th>Where</th><th>Talks to</th><th>Port / path</th><th>Status</th></tr>
+<tr><td>virt-handler (KubeVirt)</td><td>every worker, DaemonSet</td><td>Prometheus scrapes it</td><td>8443 /metrics, 30 s</td><td>GA</td></tr>
+<tr><td>Prometheus / Thanos querier</td><td>openshift-monitoring</td><td>console, Korrel8r, Alertmanager</td><td>9091 PromQL, 9094 alerts</td><td>GA</td></tr>
+<tr><td>Vector collector (ClusterLogForwarder demo-loki)</td><td>openshift-logging, DaemonSet</td><td>LokiStack gateway</td><td>8080, application tenant</td><td>GA</td></tr>
+<tr><td>LokiStack logging-loki, size 1x.demo</td><td>openshift-logging</td><td>MinIO S3 (lab); Korrel8r; Logging UI plugin</td><td>8080 gateway, 9000 S3</td><td>GA (1x.demo is not for production)</td></tr>
+<tr><td>netobserv eBPF agent, flowlogs-pipeline</td><td>netobserv, DaemonSets</td><td>LokiStack loki (network tenant)</td><td>8080</td><td>GA, sampling 1:50 here</td></tr>
+<tr><td>Korrel8r (operator managed)</td><td>openshift-cluster-observability-operator</td><td>k8s API, Thanos, Alertmanager, both LokiStacks</td><td>9443 REST and /mcp</td><td>GA with COO 1.3+, image 0.11.1</td></tr>
+<tr><td>Korrel8r 0.12.1 (upstream, this run only)</td><td>demo-vms</td><td>same stores</td><td>8080 via route, 180 s timeout</td><td>Experimental</td></tr>
+<tr><td>Troubleshooting panel UI plugin</td><td>console</td><td>Korrel8r</td><td>Application launcher, Signal Correlation</td><td>GA, OCP 4.19+</td></tr>
+</table></div>
+
+<h2>4. What the run measured</h2>
+<div class="tw"><table>
+<tr><th>Measurement</th><th>Value</th><th>Where it came from</th></tr>
+<tr><td>Distinct kubevirt_vmi_* series for one idle VM</td><td>61</td><td>Thanos, count by name and namespace</td></tr>
+<tr><td>Alert VMCannotBeEvicted: rule hold, then fired</td><td>for 1m; VMI Running 13:06:16Z; fired 13:13:14Z, again 13:24:44Z after a brief resolve</td><td>KubeVirt rule, Alertmanager API</td></tr>
+<tr><td>Graph from the alert (0.12.1): nodes and counts</td><td>VM 1, VMI 1, pod 1, node 3, metrics 296, logs 200 (2 queries × 100)</td><td>POST /api/v1alpha1/graphs/goals, 6.8 s</td></tr>
+<tr><td>Graph from the VMI (0.12.1)</td><td>adds PVC 1, alert 1, flow 1; metrics 312; 15.3 s</td><td>same endpoint</td></tr>
+<tr><td>Real objects behind the graph</td><td>100 virt-launcher log lines; 1 NTP flow (UDP 123, 90 bytes)</td><td>GET /api/v1alpha1/objects with the graph's own queries</td></tr>
+<tr><td>Console panel, shipped engine, VMI query typed into the editor</td><td>VMI, VM, pod, node, PVC, PV, StorageClass, DataVolume, 5 events, 248/263 metrics, 2/3 flows, 1000 log lines</td><td>Troubleshooting Panel screenshot, korrel8r 0.11.1</td></tr>
+<tr><td>Console panel, shipped engine, alert query typed into the editor</td><td>alert and 128 metrics only</td><td>same; no AlertToVMI rule in 0.11.1</td></tr>
+<tr><td>Rules in the shipped vs upstream engine</td><td>47 (4 KubeVirt) vs 104 (30 KubeVirt)</td><td>korrel8r rules, run inside each pod</td></tr>
+<tr><td>Fleet: running VMIs on an outdated virt-launcher</td><td>21 of 28</td><td>kubevirt_vmi_number_of_outdated; workloadUpdateMethods is empty</td></tr>
+<tr><td>Hand-patched rules on the operator's config</td><td>reverted in under 2 minutes; broke the panel first</td><td>ConfigMap watch, panel screenshot</td></tr>
+</table></div>
+<p class="note">Series counts are for an idle Fedora guest with the guest agent connected; busy guests and guests without the agent differ. The migration beat and the MCP transcript are in the evidence folder of the repository.</p>
+
+<h2>5. Decisions and trade-offs</h2>
+<div class="tw"><table>
+<tr><th>Decision</th><th>Why</th><th>What you give up</th></tr>
+<tr><td>One Prometheus for everything instead of a VM monitoring product</td><td>VM series join pod and node series on shared labels; one query language; one alert pipeline</td><td>You size and run the TSDB. At roughly 60 series per VM, 8,000 VMs is about 480,000 series; plan Thanos and retention</td></tr>
+<tr><td>Two LokiStacks (logs, netflows)</td><td>Different tenants and retention; NetObserv expects its own</td><td>Two stores to size. Loki logging defaults to 30 days; forward externally for longer</td></tr>
+<tr><td>Korrel8r rules instead of hand-built dashboards</td><td>The walk works for any VM the day it is created; no per-VM dashboard to maintain</td><td>The walk is only as good as the rule set in the shipped image; check it</td></tr>
+<tr><td>GA COO 1.5.2 (korrel8r 0.11.1)</td><td>Supported; VMI to pod to logs, metrics and flows works from the VMI page</td><td>No Alert to VMI hop and no VmiToLogs rule until a newer image ships; in this build Focus is disabled on the VM, VMI and pod pages, so you type the query into the panel's editor</td></tr>
+<tr><td>Runtime sysctl for schedstats, not a MachineConfig</td><td>No reboot on a shared cluster; vCPU wait and delay series appear at once</td><td>Reverts on reboot. Use the MachineConfig for a permanent install</td></tr>
+<tr><td>MinIO in-cluster for S3</td><td>Fastest way to give LokiStack object storage in a lab</td><td>Not a production object store. Use ODF or an external S3</td></tr>
+<tr><td>Guest agent in every VM image</td><td>Filesystem, load and IP data; the same dependency VMware Tools has</td><td>Panels are blank without it and do not say why</td></tr>
+</table></div>
+
+<h2>6. Where VMware still wins, said plainly</h2>
+<p class="lead">Capacity planning with What-If modelling, predictive DRS acting on forecast load, built-in cost and chargeback, and multi-year native retention are turnkey in Aria Operations and are not in this architecture. ACM right-sizing (GA in 2.16) is narrower. Say this before anyone asks; it buys credibility for the openness argument.</p>
+</main>
+
+<footer><div class="shell">Numbers come from the live run on 2026-09-11 (evidence folder in the repository). Illustrative items are marked. Generated with the refarch-animator skill; steps are absolute state and deep-linkable as <span class="mono">#step-N</span>.</div></footer>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ===== EDIT: scenario state
+  var NODES_MAX = 8, GHOSTS = ['g-c-alert', 'g-c-vmi', 'g-c-pod', 'g-c-node', 'g-c-pvc', 'g-c-logs', 'g-c-metrics', 'g-c-flows'];
+  var HOT = ['b-vm', 'b-vh', 'b-col', 'b-ebpf', 'b-prom', 'b-am', 'b-loki', 'b-nflow', 'b-k8r', 'b-graph', 'b-console', 'b-agent', 'b-auto'];
+  var ALL = GHOSTS;
+
+  // Each step is ABSOLUTE state.
+  var steps = [
+    { t: 'Three VMs, one open store',
+      b: 'Namespace demo-vms runs vm-demo, vm-demo-2 and vm-non-migratable on OpenShift 4.20.32 with Virtualization 4.20.24. Each VM is a virt-launcher pod, so its 61 kubevirt_vmi_* series carry the same namespace, name and node labels as every pod and node metric.',
+      hot: ['b-vm', 'b-prom'], flows: [], alerts: 0, nodes: 0, series: 61, logs: 0, nflows: 0, time: '–', ghosts: [] },
+    { t: 'The exporter says the VM cannot move',
+      b: 'vm-non-migratable sits on a ReadWriteOnce block disk with evictionStrategy LiveMigrate. virt-handler exports kubevirt_vmi_non_evictable=1 for it and Prometheus scrapes it every 30 seconds, like any other target.',
+      hot: ['b-vm', 'b-vh', 'b-prom'], flows: [['f-scrape', false]], alerts: 0, nodes: 0, series: 61, logs: 0, nflows: 0, time: '–', ghosts: [] },
+    { t: 'The rule holds for a minute, then the alert fires',
+      b: 'The shipped rule kubevirt_vmi_non_evictable × kubevirt_vmi_info{phase=running} == 1 stays true for one minute. VMCannotBeEvicted (warning) first fired at 13:13:14Z, seven minutes after the VMI reached Running (13:06:16Z); it resolved briefly and fired again at 13:24:44Z. Its name=vm-non-migratable and namespace=demo-vms labels are what the walk will use.',
+      hot: ['b-prom', 'b-am'], flows: [['f-alert', false]], alerts: 1, nodes: 0, series: 61, logs: 0, nflows: 0, time: '–', ghosts: [] },
+    { t: 'Logs and flows land in the same kind of store',
+      b: 'Meanwhile the pod\'s logs go through the collector to LokiStack and its packets are seen by the eBPF agent and stored as flows in a second LokiStack. During the run, 100 log lines and one NTP flow (UDP 123, 90 bytes) were retrievable for this pod.',
+      hot: ['b-vm', 'b-col', 'b-ebpf', 'b-loki', 'b-nflow'], flows: [['f-logs', false], ['f-flows', false]], alerts: 1, nodes: 0, series: 61, logs: 100, nflows: 1, time: '–', ghosts: [] },
+    { t: 'Open the panel, resolve the alert',
+      b: 'From the console, Signal Correlation asks Korrel8r to start at the alert. Rule AlertToVMI turns the alert\'s name and namespace labels into a VirtualMachineInstance query. One VMI found.',
+      hot: ['b-console', 'b-k8r', 'b-am', 'b-graph'], flows: [['f-console', false], ['f-k8r-am', false]], alerts: 1, nodes: 2, series: 61, logs: 100, nflows: 1, time: '–', ghosts: ['g-c-alert', 'g-c-vmi'] },
+    { t: 'Follow the label, not an ownerReference',
+      b: 'virt-launcher pods carry vm.kubevirt.io/name=<vmi> but no ownerReference to the VMI, so VmiToPod is a KubeVirt-specific rule rather than the generic owner-follow rule. It finds the pod; VmiToNode and VmiToPVC add the node and the disk.',
+      hot: ['b-k8r', 'b-graph', 'b-vm'], flows: [], alerts: 1, nodes: 5, series: 61, logs: 100, nflows: 1, time: '–', ghosts: ['g-c-alert', 'g-c-vmi', 'g-c-pod', 'g-c-node', 'g-c-pvc'] },
+    { t: 'Fan out to metrics, logs and flows',
+      b: 'PodToMetric, PodToLogs and K8sSrcToNetflow query the three stores with the pod\'s labels. Result: 296 metric series, 100 log lines and 1 flow attached to the same graph, 6.8 seconds from the alert to the last node.',
+      hot: ['b-k8r', 'b-graph', 'b-prom', 'b-loki', 'b-nflow'], flows: [['f-k8r-prom', false], ['f-k8r-loki', false], ['f-k8r-nflow', false]], alerts: 1, nodes: 8, series: 296, logs: 100, nflows: 1, time: '6.8 s', ghosts: ALL },
+    { t: 'The same alert can drive automation',
+      b: 'Nothing in the alert path is VM-specific. Alertmanager can route VMCannotBeEvicted to a webhook receiver such as Event-Driven Ansible or a GitOps reconciler exactly as it would a pod alert. Illustrative: no receiver was wired in this run.',
+      hot: ['b-am', 'b-auto'], flows: [['f-auto', false]], alerts: 1, nodes: 8, series: 296, logs: 100, nflows: 1, time: '6.8 s', ghosts: ALL },
+    { t: 'An agent walks the same graph',
+      b: 'Korrel8r exposes the same engine over MCP. An agent calls create_goals_graph with the alert as the start and gets back node classes with counts, then get_objects for the pod or the log lines. It follows rules; it does not guess. Upstream 0.12.1, experimental.',
+      hot: ['b-agent', 'b-k8r', 'b-graph'], flows: [['f-mcp', false]], alerts: 1, nodes: 8, series: 296, logs: 100, nflows: 1, time: '6.8 s', ghosts: ALL },
+    { t: 'Check the engine version before you promise the walk',
+      b: 'The GA Cluster Observability Operator 1.5.2 ships korrel8r 0.11.1: 47 rules, four of them for KubeVirt (VmToVmi, VmiToPod, VmiToNode, VmToPVC). VMI to pod to logs, metrics and flows works when you type the VMI query into the panel\'s editor (Focus is disabled on the VM, VMI and pod pages in this build). AlertToVMI and VmiToLogs need 0.12.1 (104 rules, 30 for KubeVirt). Patching the operator\'s config by hand is reverted within two minutes.',
+      hot: ['b-k8r'], flows: [], alerts: 1, nodes: 8, series: 296, logs: 100, nflows: 1, time: '6.8 s', ghosts: ALL }
+  ];
+  // ===== KEEP: player machinery — identical in every generated page =====
+  var cur = 0, playing = false, playTimer = null, initialized = false;
+  var stage = $('stage'), dotLayer = null, animHandle = null, animDots = [], tweenHandle = null;
+
+  var dotsBox = $('stepdots');
+  steps.forEach(function (s, i) {
+    var b = document.createElement('button');
+    b.setAttribute('aria-label', 'Step ' + (i + 1) + ': ' + s.t);
+    b.addEventListener('click', function () { stopPlay(); go(i); });
+    dotsBox.appendChild(b);
+  });
+
+  function clearDots() {
+    if (animHandle) cancelAnimationFrame(animHandle);
+    animHandle = null;
+    animDots.forEach(function (d) { d.el.remove(); });
+    animDots = [];
+  }
+
+  function startDots(flowSpecs) {
+    clearDots();
+    if (reduced || !flowSpecs.length) return;
+    if (!dotLayer) {
+      dotLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      stage.appendChild(dotLayer);
+    }
+    flowSpecs.forEach(function (spec, fi) {
+      var path = $(spec[0]); if (!path) return;
+      var len = path.getTotalLength();
+      var plane = path.classList.contains('p1') ? 'p1' : (path.classList.contains('p3') ? 'p3' : 'p2');
+      var n = Math.max(len < 120 ? 1 : 2, Math.min(4, Math.round(len / 140)));
+      /* 90 px/s, but never faster than one loop per 1.4s — short edges
+         otherwise recycle so fast they look like they're racing */
+      var pxSpeed = Math.min(90, len / 1.4);
+      for (var k = 0; k < n; k++) {
+        var c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        c.setAttribute('class', 'anim-dot ' + plane);
+        c.setAttribute('r', '5');
+        dotLayer.appendChild(c);
+        animDots.push({ el: c, path: path, len: len, rev: !!spec[1], off: (k / n) + fi * 0.13, speed: pxSpeed / len });
+      }
+    });
+    var last = performance.now();
+    function tick(now) {
+      var dt = (now - last) / 1000; last = now;
+      animDots.forEach(function (d) {
+        d.off = (d.off + d.speed * dt) % 1;
+        var at = d.rev ? (1 - d.off) * d.len : d.off * d.len;
+        var p = d.path.getPointAtLength(at);
+        d.el.setAttribute('cx', p.x); d.el.setAttribute('cy', p.y);
+      });
+      animHandle = requestAnimationFrame(tick);
+    }
+    animHandle = requestAnimationFrame(tick);
+  }
+
+  function tweenNodes(target) {
+    if (tweenHandle) cancelAnimationFrame(tweenHandle);
+    var cEl = $('c-nodes'), mEl = $('meter');
+    var from = parseInt(cEl.textContent.replace(/,/g, ''), 10) || 0;
+    var t0 = performance.now(), dur = reduced ? 0 : 600;
+    function frame(now) {
+      var k = dur ? Math.min(1, (now - t0) / dur) : 1;
+      var v = Math.round(from + (target - from) * k);
+      cEl.textContent = v.toLocaleString('en-US');
+      mEl.setAttribute('width', Math.max(0, Math.min(230, 230 * v / NODES_MAX)));
+      tweenHandle = k < 1 ? requestAnimationFrame(frame) : null;
+    }
+    tweenHandle = requestAnimationFrame(frame);
+  }
+
+  function go(i) {
+    cur = (i + steps.length) % steps.length;
+    var s = steps[cur];
+    $('stepnum').textContent = 'Step ' + (cur + 1) + ' / ' + steps.length;
+    $('cap-title').textContent = (cur + 1) + '. ' + s.t;
+    $('cap-body').textContent = s.b;
+    Array.prototype.forEach.call(dotsBox.children, function (d, di) {
+      if (di === cur) d.setAttribute('aria-current', 'true'); else d.removeAttribute('aria-current');
+    });
+    HOT.forEach(function (id) { $(id).classList.remove('hot'); });
+    (s.hot || []).forEach(function (id) { $(id).classList.add('hot'); });
+    document.querySelectorAll('#stage .flow').forEach(function (p) { p.classList.remove('on'); });
+    (s.flows || []).forEach(function (spec) { var p = $(spec[0]); if (p) p.classList.add('on'); });
+    tweenNodes(s.nodes);
+    $('c-alerts').textContent = s.alerts;
+    $('c-series').textContent = s.series;
+    $('c-logs').textContent = s.logs;
+    $('c-flows').textContent = s.nflows;
+    $('c-time').textContent = s.time;
+    GHOSTS.forEach(function (id) { $(id).classList.toggle('shown', (s.ghosts || []).indexOf(id) !== -1); });
+    startDots(s.flows || []);
+    if (initialized) {
+      try { history.replaceState(null, '', '#step-' + (cur + 1)); } catch (err) {}
+    }
+  }
+
+  function stopPlay() {
+    playing = false;
+    if (playTimer) clearInterval(playTimer);
+    var b = $('btn-play');
+    b.setAttribute('aria-pressed', 'false');
+    b.textContent = '▶ Play';
+  }
+  $('btn-prev').addEventListener('click', function () { stopPlay(); go(cur - 1); });
+  $('btn-next').addEventListener('click', function () { stopPlay(); go(cur + 1); });
+  $('btn-play').addEventListener('click', function () {
+    if (playing) { stopPlay(); return; }
+    playing = true;
+    this.setAttribute('aria-pressed', 'true');
+    this.textContent = '⏸ Pause';
+    if (cur === steps.length - 1) go(0);
+    playTimer = setInterval(function () {
+      if (cur === steps.length - 1) { stopPlay(); return; }
+      go(cur + 1);
+    }, 7000);
+  });
+
+  $('btn-link').addEventListener('click', function () {
+    var self = this;
+    var url = location.href.split('#')[0] + '#step-' + (cur + 1);
+    try { history.replaceState(null, '', '#step-' + (cur + 1)); } catch (err) {}
+    function done(ok) {
+      self.textContent = ok ? 'Copied' : 'Link in address bar';
+      setTimeout(function () { self.textContent = 'Copy step link'; }, 1600);
+    }
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (err) {}
+      ta.remove(); done(ok);
+    }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(url).then(function () { done(true); }, fallback);
+    } else { fallback(); }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    var t = e.target;
+    if (t && t.closest && t.closest('input, textarea, select, .stagewrap')) return;
+    var r = document.querySelector('.player').getBoundingClientRect();
+    if (r.bottom < 80 || r.top > window.innerHeight - 80) return;
+    e.preventDefault();
+    stopPlay();
+    go(e.key === 'ArrowLeft' ? cur - 1 : cur + 1);
+  });
+
+  function applyHash() {
+    var m = /^#step-(\d+)$/.exec(location.hash);
+    if (!m) return;
+    var n = Math.min(steps.length, Math.max(1, parseInt(m[1], 10)));
+    stopPlay();
+    go(n - 1);
+    document.querySelector('.player').scrollIntoView();
+  }
+
+  go(0);
+  initialized = true;
+  applyHash();
+  window.addEventListener('hashchange', applyHash);
+})();
+</script>
+</body>
+</html>

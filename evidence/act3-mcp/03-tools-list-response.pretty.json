@@ -1,0 +1,1237 @@
+{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "result": {
+        "ttlMs": 0,
+        "cacheScope": "public",
+        "tools": [
+            {
+                "description": "Follow correlation paths from start objects to specific goal classes. Returns a graph of correlated classes with queries and result counts. Use for targeted queries like \"find logs for this pod\" or \"what alerts fired for this deployment?\" Start queries use \"domain:class:selector\" format; goals are class names like [\"log:application\"]. See 'help' for syntax.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "goals": {
+                            "type": [
+                                "null",
+                                "array"
+                            ],
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Goal classes in DOMAIN:CLASS format, e.g. log:application, alert:alert."
+                        },
+                        "start": {
+                            "type": "object",
+                            "properties": {
+                                "class": {
+                                    "type": "string",
+                                    "description": "Class of starting objects in DOMAIN:CLASS format. Required when using objects. If queries are included, they must all be of this class."
+                                },
+                                "constraint": {
+                                    "type": [
+                                        "null",
+                                        "object"
+                                    ],
+                                    "properties": {
+                                        "end": {
+                                            "type": [
+                                                "null",
+                                                "string"
+                                            ],
+                                            "description": "Ignore objects with timestamps after this end time. Default: now."
+                                        },
+                                        "limit": {
+                                            "type": [
+                                                "null",
+                                                "integer"
+                                            ],
+                                            "description": "Limit total number of objects per query. Default: 100."
+                                        },
+                                        "queryLimit": {
+                                            "type": [
+                                                "null",
+                                                "integer"
+                                            ],
+                                            "description": "Limit total number of queries per class during traversal. Default: 10."
+                                        },
+                                        "start": {
+                                            "type": [
+                                                "null",
+                                                "string"
+                                            ],
+                                            "description": "Ignore objects with timestamps before this start time. Default: 1 hour before end."
+                                        }
+                                    },
+                                    "description": "Constrains the objects that will be included in search results.",
+                                    "additionalProperties": false
+                                },
+                                "objects": {
+                                    "type": [
+                                        "null",
+                                        "array"
+                                    ],
+                                    "items": {
+                                        "type": [
+                                            "null",
+                                            "array"
+                                        ],
+                                        "items": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 255
+                                        }
+                                    },
+                                    "description": "Start objects serialized as JSON. Requires class to identify the object type."
+                                },
+                                "queries": {
+                                    "type": [
+                                        "null",
+                                        "array"
+                                    ],
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "description": "Queries for starting objects in DOMAIN:CLASS:SELECTOR format."
+                                }
+                            },
+                            "description": "Starting point for the search.",
+                            "additionalProperties": false
+                        }
+                    },
+                    "required": [
+                        "goals",
+                        "start"
+                    ],
+                    "additionalProperties": false
+                },
+                "name": "create_goals_graph",
+                "outputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "edges": {
+                            "type": [
+                                "null",
+                                "array"
+                            ],
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "goal": {
+                                        "type": "string",
+                                        "description": "Class name of the goal node, in DOMAIN:CLASS format."
+                                    },
+                                    "rules": {
+                                        "type": [
+                                            "null",
+                                            "array"
+                                        ],
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "description": "Name is an optional descriptive name."
+                                                },
+                                                "queries": {
+                                                    "type": [
+                                                        "null",
+                                                        "array"
+                                                    ],
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "count": {
+                                                                "type": [
+                                                                    "null",
+                                                                    "integer"
+                                                                ],
+                                                                "description": "Number of results, omitted if the query was not executed."
+                                                            },
+                                                            "query": {
+                                                                "type": "string",
+                                                                "description": "Query for correlation data in DOMAIN:CLASS:SELECTOR format."
+                                                            },
+                                                            "statuses": {
+                                                                "type": [
+                                                                    "null",
+                                                                    "array"
+                                                                ],
+                                                                "items": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "count": {
+                                                                            "type": [
+                                                                                "null",
+                                                                                "integer"
+                                                                            ]
+                                                                        },
+                                                                        "status": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "status"
+                                                                    ],
+                                                                    "additionalProperties": false
+                                                                }
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "query"
+                                                        ],
+                                                        "additionalProperties": false
+                                                    },
+                                                    "description": "Queries generated while following this rule."
+                                                }
+                                            },
+                                            "required": [
+                                                "name"
+                                            ],
+                                            "additionalProperties": false
+                                        },
+                                        "description": "Set of rules followed along this edge."
+                                    },
+                                    "start": {
+                                        "type": "string",
+                                        "description": "Class name of the start node, in DOMAIN:CLASS format."
+                                    }
+                                },
+                                "required": [
+                                    "goal",
+                                    "start"
+                                ],
+                                "additionalProperties": false
+                            },
+                            "description": "List of graph edges."
+                        },
+                        "nodes": {
+                            "type": [
+                                "null",
+                                "array"
+                            ],
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "class": {
+                                        "type": "string",
+                                        "description": "Full class name in DOMAIN:CLASS format."
+                                    },
+                                    "count": {
+                                        "type": [
+                                            "null",
+                                            "integer"
+                                        ],
+                                        "description": "Number of results for this class, after de-duplication."
+                                    },
+                                    "queries": {
+                                        "type": [
+                                            "null",
+                                            "array"
+                                        ],
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "count": {
+                                                    "type": [
+                                                        "null",
+                                                        "integer"
+                                                    ],
+                                                    "description": "Number of results, omitted if the query was not executed."
+                                                },
+                                                "query": {
+                                                    "type": "string",
+                                                    "description": "Query for correlation data in DOMAIN:CLASS:SELECTOR format."
+                                                },
+                                                "statuses": {
+                                                    "type": [
+                                                        "null",
+                                                        "array"
+                                                    ],
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "count": {
+                                                                "type": [
+                                                                    "null",
+                                                                    "integer"
+                                                                ]
+                                                            },
+                                                            "status": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "status"
+                                                        ],
+                                                        "additionalProperties": false
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "query"
+                                            ],
+                                            "additionalProperties": false
+                                        },
+                                        "description": "Queries yielding results for this class."
+                                    },
+                                    "result": {
+                                        "type": [
+                                            "null",
+                                            "array"
+                                        ],
+                                        "items": {
+                                            "type": [
+                                                "null",
+                                                "array"
+                                            ],
+                                            "items": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 255
+                                            }
+                                        },
+                                        "description": "Serialized result contents, may be large."
+                                    }
+                                },
+                                "required": [
+                                    "class"
+                                ],
+                                "additionalProperties": false
+                            },
+                            "description": "List of graph nodes."
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            {
+                "description": "Follow correlation rules outward from start objects up to a given depth. Returns a graph of correlated classes with queries and result counts. Use for open-ended exploration like \"what is related to this pod?\" Depth 1 = direct correlations; depth 2-3 typically reaches logs, metrics, and alerts. Start queries use \"domain:class:selector\" format; see 'help' for syntax.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "depth": {
+                            "type": "integer",
+                            "description": "Maximum number of correlation steps to follow from the start. Depth 1 returns direct correlations only."
+                        },
+                        "start": {
+                            "type": "object",
+                            "properties": {
+                                "class": {
+                                    "type": "string",
+                                    "description": "Class of starting objects in DOMAIN:CLASS format. Required when using objects. If queries are included, they must all be of this class."
+                                },
+                                "constraint": {
+                                    "type": [
+                                        "null",
+                                        "object"
+                                    ],
+                                    "properties": {
+                                        "end": {
+                                            "type": [
+                                                "null",
+                                                "string"
+                                            ],
+                                            "description": "Ignore objects with timestamps after this end time. Default: now."
+                                        },
+                                        "limit": {
+                                            "type": [
+                                                "null",
+                                                "integer"
+                                            ],
+                                            "description": "Limit total number of objects per query. Default: 100."
+                                        },
+                                        "queryLimit": {
+                                            "type": [
+                                                "null",
+                                                "integer"
+                                            ],
+                                            "description": "Limit total number of queries per class during traversal. Default: 10."
+                                        },
+                                        "start": {
+                                            "type": [
+                                                "null",
+                                                "string"
+                                            ],
+                                            "description": "Ignore objects with timestamps before this start time. Default: 1 hour before end."
+                                        }
+                                    },
+                                    "description": "Constrains the objects that will be included in search results.",
+                                    "additionalProperties": false
+                                },
+                                "objects": {
+                                    "type": [
+                                        "null",
+                                        "array"
+                                    ],
+                                    "items": {
+                                        "type": [
+                                            "null",
+                                            "array"
+                                        ],
+                                        "items": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 255
+                                        }
+                                    },
+                                    "description": "Start objects serialized as JSON. Requires class to identify the object type."
+                                },
+                                "queries": {
+                                    "type": [
+                                        "null",
+                                        "array"
+                                    ],
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "description": "Queries for starting objects in DOMAIN:CLASS:SELECTOR format."
+                                }
+                            },
+                            "description": "Starting point for the search.",
+                            "additionalProperties": false
+                        }
+                    },
+                    "required": [
+                        "depth",
+                        "start"
+                    ],
+                    "additionalProperties": false
+                },
+                "name": "create_neighbors_graph",
+                "outputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "edges": {
+                            "type": [
+                                "null",
+                                "array"
+                            ],
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "goal": {
+                                        "type": "string",
+                                        "description": "Class name of the goal node, in DOMAIN:CLASS format."
+                                    },
+                                    "rules": {
+                                        "type": [
+                                            "null",
+                                            "array"
+                                        ],
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "description": "Name is an optional descriptive name."
+                                                },
+                                                "queries": {
+                                                    "type": [
+                                                        "null",
+                                                        "array"
+                                                    ],
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "count": {
+                                                                "type": [
+                                                                    "null",
+                                                                    "integer"
+                                                                ],
+                                                                "description": "Number of results, omitted if the query was not executed."
+                                                            },
+                                                            "query": {
+                                                                "type": "string",
+                                                                "description": "Query for correlation data in DOMAIN:CLASS:SELECTOR format."
+                                                            },
+                                                            "statuses": {
+                                                                "type": [
+                                                                    "null",
+                                                                    "array"
+                                                                ],
+                                                                "items": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "count": {
+                                                                            "type": [
+                                                                                "null",
+                                                                                "integer"
+                                                                            ]
+                                                                        },
+                                                                        "status": {
+                                                                            "type": "string"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "status"
+                                                                    ],
+                                                                    "additionalProperties": false
+                                                                }
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "query"
+                                                        ],
+                                                        "additionalProperties": false
+                                                    },
+                                                    "description": "Queries generated while following this rule."
+                                                }
+                                            },
+                                            "required": [
+                                                "name"
+                                            ],
+                                            "additionalProperties": false
+                                        },
+                                        "description": "Set of rules followed along this edge."
+                                    },
+                                    "start": {
+                                        "type": "string",
+                                        "description": "Class name of the start node, in DOMAIN:CLASS format."
+                                    }
+                                },
+                                "required": [
+                                    "goal",
+                                    "start"
+                                ],
+                                "additionalProperties": false
+                            },
+                            "description": "List of graph edges."
+                        },
+                        "nodes": {
+                            "type": [
+                                "null",
+                                "array"
+                            ],
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "class": {
+                                        "type": "string",
+                                        "description": "Full class name in DOMAIN:CLASS format."
+                                    },
+                                    "count": {
+                                        "type": [
+                                            "null",
+                                            "integer"
+                                        ],
+                                        "description": "Number of results for this class, after de-duplication."
+                                    },
+                                    "queries": {
+                                        "type": [
+                                            "null",
+                                            "array"
+                                        ],
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "count": {
+                                                    "type": [
+                                                        "null",
+                                                        "integer"
+                                                    ],
+                                                    "description": "Number of results, omitted if the query was not executed."
+                                                },
+                                                "query": {
+                                                    "type": "string",
+                                                    "description": "Query for correlation data in DOMAIN:CLASS:SELECTOR format."
+                                                },
+                                                "statuses": {
+                                                    "type": [
+                                                        "null",
+                                                        "array"
+                                                    ],
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "count": {
+                                                                "type": [
+                                                                    "null",
+                                                                    "integer"
+                                                                ]
+                                                            },
+                                                            "status": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "status"
+                                                        ],
+                                                        "additionalProperties": false
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "query"
+                                            ],
+                                            "additionalProperties": false
+                                        },
+                                        "description": "Queries yielding results for this class."
+                                    },
+                                    "result": {
+                                        "type": [
+                                            "null",
+                                            "array"
+                                        ],
+                                        "items": {
+                                            "type": [
+                                                "null",
+                                                "array"
+                                            ],
+                                            "items": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 255
+                                            }
+                                        },
+                                        "description": "Serialized result contents, may be large."
+                                    }
+                                },
+                                "required": [
+                                    "class"
+                                ],
+                                "additionalProperties": false
+                            },
+                            "description": "List of graph nodes."
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            {
+                "description": "Get what the user is looking at in the console. Returns a view query (main console view) and/or search parameters (troubleshooting panel), either may be absent. Use these as context for further actions.",
+                "inputSchema": {
+                    "type": "object",
+                    "additionalProperties": false
+                },
+                "name": "get_console",
+                "outputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "search": {
+                            "type": [
+                                "null",
+                                "object"
+                            ],
+                            "properties": {
+                                "goals": {
+                                    "type": [
+                                        "null",
+                                        "object"
+                                    ],
+                                    "properties": {
+                                        "goals": {
+                                            "type": [
+                                                "null",
+                                                "array"
+                                            ],
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "description": "Goal classes in DOMAIN:CLASS format, e.g. log:application, alert:alert."
+                                        },
+                                        "start": {
+                                            "type": "object",
+                                            "properties": {
+                                                "class": {
+                                                    "type": "string",
+                                                    "description": "Class of starting objects in DOMAIN:CLASS format. Required when using objects. If queries are included, they must all be of this class."
+                                                },
+                                                "constraint": {
+                                                    "type": [
+                                                        "null",
+                                                        "object"
+                                                    ],
+                                                    "properties": {
+                                                        "end": {
+                                                            "type": [
+                                                                "null",
+                                                                "string"
+                                                            ],
+                                                            "description": "Ignore objects with timestamps after this end time. Default: now."
+                                                        },
+                                                        "limit": {
+                                                            "type": [
+                                                                "null",
+                                                                "integer"
+                                                            ],
+                                                            "description": "Limit total number of objects per query. Default: 100."
+                                                        },
+                                                        "queryLimit": {
+                                                            "type": [
+                                                                "null",
+                                                                "integer"
+                                                            ],
+                                                            "description": "Limit total number of queries per class during traversal. Default: 10."
+                                                        },
+                                                        "start": {
+                                                            "type": [
+                                                                "null",
+                                                                "string"
+                                                            ],
+                                                            "description": "Ignore objects with timestamps before this start time. Default: 1 hour before end."
+                                                        }
+                                                    },
+                                                    "description": "Constrains the objects that will be included in search results.",
+                                                    "additionalProperties": false
+                                                },
+                                                "objects": {
+                                                    "type": [
+                                                        "null",
+                                                        "array"
+                                                    ],
+                                                    "items": {
+                                                        "type": [
+                                                            "null",
+                                                            "array"
+                                                        ],
+                                                        "items": {
+                                                            "type": "integer",
+                                                            "minimum": 0,
+                                                            "maximum": 255
+                                                        }
+                                                    },
+                                                    "description": "Start objects serialized as JSON. Requires class to identify the object type."
+                                                },
+                                                "queries": {
+                                                    "type": [
+                                                        "null",
+                                                        "array"
+                                                    ],
+                                                    "items": {
+                                                        "type": "string"
+                                                    },
+                                                    "description": "Queries for starting objects in DOMAIN:CLASS:SELECTOR format."
+                                                }
+                                            },
+                                            "description": "Starting point for the search.",
+                                            "additionalProperties": false
+                                        }
+                                    },
+                                    "description": "Parameters for a goal-directed correlation search.",
+                                    "required": [
+                                        "goals",
+                                        "start"
+                                    ],
+                                    "additionalProperties": false
+                                },
+                                "neighbors": {
+                                    "type": [
+                                        "null",
+                                        "object"
+                                    ],
+                                    "properties": {
+                                        "depth": {
+                                            "type": "integer",
+                                            "description": "Maximum number of correlation steps to follow from the start. Depth 1 returns direct correlations only."
+                                        },
+                                        "start": {
+                                            "type": "object",
+                                            "properties": {
+                                                "class": {
+                                                    "type": "string",
+                                                    "description": "Class of starting objects in DOMAIN:CLASS format. Required when using objects. If queries are included, they must all be of this class."
+                                                },
+                                                "constraint": {
+                                                    "type": [
+                                                        "null",
+                                                        "object"
+                                                    ],
+                                                    "properties": {
+                                                        "end": {
+                                                            "type": [
+                                                                "null",
+                                                                "string"
+                                                            ],
+                                                            "description": "Ignore objects with timestamps after this end time. Default: now."
+                                                        },
+                                                        "limit": {
+                                                            "type": [
+                                                                "null",
+                                                                "integer"
+                                                            ],
+                                                            "description": "Limit total number of objects per query. Default: 100."
+                                                        },
+                                                        "queryLimit": {
+                                                            "type": [
+                                                                "null",
+                                                                "integer"
+                                                            ],
+                                                            "description": "Limit total number of queries per class during traversal. Default: 10."
+                                                        },
+                                                        "start": {
+                                                            "type": [
+                                                                "null",
+                                                                "string"
+                                                            ],
+                                                            "description": "Ignore objects with timestamps before this start time. Default: 1 hour before end."
+                                                        }
+                                                    },
+                                                    "description": "Constrains the objects that will be included in search results.",
+                                                    "additionalProperties": false
+                                                },
+                                                "objects": {
+                                                    "type": [
+                                                        "null",
+                                                        "array"
+                                                    ],
+                                                    "items": {
+                                                        "type": [
+                                                            "null",
+                                                            "array"
+                                                        ],
+                                                        "items": {
+                                                            "type": "integer",
+                                                            "minimum": 0,
+                                                            "maximum": 255
+                                                        }
+                                                    },
+                                                    "description": "Start objects serialized as JSON. Requires class to identify the object type."
+                                                },
+                                                "queries": {
+                                                    "type": [
+                                                        "null",
+                                                        "array"
+                                                    ],
+                                                    "items": {
+                                                        "type": "string"
+                                                    },
+                                                    "description": "Queries for starting objects in DOMAIN:CLASS:SELECTOR format."
+                                                }
+                                            },
+                                            "description": "Starting point for the search.",
+                                            "additionalProperties": false
+                                        }
+                                    },
+                                    "description": "Parameters for a neighborhood correlation search.",
+                                    "required": [
+                                        "depth",
+                                        "start"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            },
+                            "description": "The troubleshooting panel displays the results of this correlation search.",
+                            "additionalProperties": false
+                        },
+                        "view": {
+                            "type": "string",
+                            "description": "Query for the main console view, in DOMAIN:CLASS:SELECTOR format."
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            {
+                "description": "Execute a query and return matching objects as self-contained JSON (all labels/fields included per object). Query format is \"domain:class:selector\"; see 'help' for syntax. Use the constraint parameter (limit number of objects, start/end time as RFC 3339) to control result size, especially for high-volume domains like logs, metrics, and traces.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Query string in the form 'domain:class:selector'. Use 'help' to learn query syntax for each domain."
+                        },
+                        "constraint": {
+                            "type": [
+                                "null",
+                                "object"
+                            ],
+                            "properties": {
+                                "end": {
+                                    "type": [
+                                        "null",
+                                        "string"
+                                    ],
+                                    "description": "Ignore objects with timestamps after this end time. Default: now."
+                                },
+                                "limit": {
+                                    "type": [
+                                        "null",
+                                        "integer"
+                                    ],
+                                    "description": "Limit total number of objects per query. Default: 100."
+                                },
+                                "queryLimit": {
+                                    "type": [
+                                        "null",
+                                        "integer"
+                                    ],
+                                    "description": "Limit total number of queries per class during traversal. Default: 10."
+                                },
+                                "start": {
+                                    "type": [
+                                        "null",
+                                        "string"
+                                    ],
+                                    "description": "Ignore objects with timestamps before this start time. Default: 1 hour before end."
+                                }
+                            },
+                            "description": "Optional constraint to limit results by time range and/or count.",
+                            "additionalProperties": false
+                        }
+                    },
+                    "required": [
+                        "query"
+                    ],
+                    "additionalProperties": false
+                },
+                "name": "get_objects",
+                "outputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "objects": {
+                            "type": [
+                                "null",
+                                "array"
+                            ],
+                            "items": true,
+                            "description": "List of objects matching the query"
+                        }
+                    },
+                    "required": [
+                        "objects"
+                    ],
+                    "additionalProperties": false
+                }
+            },
+            {
+                "description": "Get help on domains, classes, and query syntax. Omit the domain parameter for help on all domains. Class names have the form \"domain:class\". Query strings have the form \"domain:class:selector\". Use this before constructing queries for other tools.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "domain": {
+                            "type": "string",
+                            "description": "If specified, get help for this domain only."
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "name": "help",
+                "outputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "documentation": {
+                            "type": "string",
+                            "description": "Domain documentation including query syntax and examples"
+                        }
+                    },
+                    "required": [
+                        "documentation"
+                    ],
+                    "additionalProperties": false
+                }
+            },
+            {
+                "description": "List classes in a domain. A class represents objects with a specific structure. Full class names have the form \"domain:class\" and are used in queries and as goal parameters. Use 'help' for details on class and query syntax.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "domain": {
+                            "type": "string",
+                            "description": "Name of the domain to list"
+                        }
+                    },
+                    "required": [
+                        "domain"
+                    ],
+                    "additionalProperties": false
+                },
+                "name": "list_domain_classes",
+                "outputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "domain": {
+                            "type": "string",
+                            "description": "Domain name"
+                        },
+                        "classes": {
+                            "type": [
+                                "null",
+                                "array"
+                            ],
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "List of classes in the domain"
+                        }
+                    },
+                    "required": [
+                        "domain",
+                        "classes"
+                    ],
+                    "additionalProperties": false
+                }
+            },
+            {
+                "description": "List available domains with descriptions. A domain groups signals or resources that share a query syntax and data store. Use 'list_domain_classes' or 'help' to explore a domain further.",
+                "inputSchema": {
+                    "type": "object",
+                    "additionalProperties": false
+                },
+                "name": "list_domains",
+                "outputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "domains": {
+                            "type": [
+                                "null",
+                                "array"
+                            ],
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "stores": {
+                                        "type": [
+                                            "null",
+                                            "array"
+                                        ],
+                                        "items": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "name"
+                                ],
+                                "additionalProperties": false
+                            },
+                            "description": "List of domains"
+                        }
+                    },
+                    "required": [
+                        "domains"
+                    ],
+                    "additionalProperties": false
+                }
+            },
+            {
+                "description": "Update the console to display new data. Set 'view' to a query to update the main view, and/or set 'search' to display a correlation graph in the troubleshooting panel. See 'help' for query syntax.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "search": {
+                            "type": [
+                                "null",
+                                "object"
+                            ],
+                            "properties": {
+                                "goals": {
+                                    "type": [
+                                        "null",
+                                        "object"
+                                    ],
+                                    "properties": {
+                                        "goals": {
+                                            "type": [
+                                                "null",
+                                                "array"
+                                            ],
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "description": "Goal classes in DOMAIN:CLASS format, e.g. log:application, alert:alert."
+                                        },
+                                        "start": {
+                                            "type": "object",
+                                            "properties": {
+                                                "class": {
+                                                    "type": "string",
+                                                    "description": "Class of starting objects in DOMAIN:CLASS format. Required when using objects. If queries are included, they must all be of this class."
+                                                },
+                                                "constraint": {
+                                                    "type": [
+                                                        "null",
+                                                        "object"
+                                                    ],
+                                                    "properties": {
+                                                        "end": {
+                                                            "type": [
+                                                                "null",
+                                                                "string"
+                                                            ],
+                                                            "description": "Ignore objects with timestamps after this end time. Default: now."
+                                                        },
+                                                        "limit": {
+                                                            "type": [
+                                                                "null",
+                                                                "integer"
+                                                            ],
+                                                            "description": "Limit total number of objects per query. Default: 100."
+                                                        },
+                                                        "queryLimit": {
+                                                            "type": [
+                                                                "null",
+                                                                "integer"
+                                                            ],
+                                                            "description": "Limit total number of queries per class during traversal. Default: 10."
+                                                        },
+                                                        "start": {
+                                                            "type": [
+                                                                "null",
+                                                                "string"
+                                                            ],
+                                                            "description": "Ignore objects with timestamps before this start time. Default: 1 hour before end."
+                                                        }
+                                                    },
+                                                    "description": "Constrains the objects that will be included in search results.",
+                                                    "additionalProperties": false
+                                                },
+                                                "objects": {
+                                                    "type": [
+                                                        "null",
+                                                        "array"
+                                                    ],
+                                                    "items": {
+                                                        "type": [
+                                                            "null",
+                                                            "array"
+                                                        ],
+                                                        "items": {
+                                                            "type": "integer",
+                                                            "minimum": 0,
+                                                            "maximum": 255
+                                                        }
+                                                    },
+                                                    "description": "Start objects serialized as JSON. Requires class to identify the object type."
+                                                },
+                                                "queries": {
+                                                    "type": [
+                                                        "null",
+                                                        "array"
+                                                    ],
+                                                    "items": {
+                                                        "type": "string"
+                                                    },
+                                                    "description": "Queries for starting objects in DOMAIN:CLASS:SELECTOR format."
+                                                }
+                                            },
+                                            "description": "Starting point for the search.",
+                                            "additionalProperties": false
+                                        }
+                                    },
+                                    "description": "Parameters for a goal-directed correlation search.",
+                                    "required": [
+                                        "goals",
+                                        "start"
+                                    ],
+                                    "additionalProperties": false
+                                },
+                                "neighbors": {
+                                    "type": [
+                                        "null",
+                                        "object"
+                                    ],
+                                    "properties": {
+                                        "depth": {
+                                            "type": "integer",
+                                            "description": "Maximum number of correlation steps to follow from the start. Depth 1 returns direct correlations only."
+                                        },
+                                        "start": {
+                                            "type": "object",
+                                            "properties": {
+                                                "class": {
+                                                    "type": "string",
+                                                    "description": "Class of starting objects in DOMAIN:CLASS format. Required when using objects. If queries are included, they must all be of this class."
+                                                },
+                                                "constraint": {
+                                                    "type": [
+                                                        "null",
+                                                        "object"
+                                                    ],
+                                                    "properties": {
+                                                        "end": {
+                                                            "type": [
+                                                                "null",
+                                                                "string"
+                                                            ],
+                                                            "description": "Ignore objects with timestamps after this end time. Default: now."
+                                                        },
+                                                        "limit": {
+                                                            "type": [
+                                                                "null",
+                                                                "integer"
+                                                            ],
+                                                            "description": "Limit total number of objects per query. Default: 100."
+                                                        },
+                                                        "queryLimit": {
+                                                            "type": [
+                                                                "null",
+                                                                "integer"
+                                                            ],
+                                                            "description": "Limit total number of queries per class during traversal. Default: 10."
+                                                        },
+                                                        "start": {
+                                                            "type": [
+                                                                "null",
+                                                                "string"
+                                                            ],
+                                                            "description": "Ignore objects with timestamps before this start time. Default: 1 hour before end."
+                                                        }
+                                                    },
+                                                    "description": "Constrains the objects that will be included in search results.",
+                                                    "additionalProperties": false
+                                                },
+                                                "objects": {
+                                                    "type": [
+                                                        "null",
+                                                        "array"
+                                                    ],
+                                                    "items": {
+                                                        "type": [
+                                                            "null",
+                                                            "array"
+                                                        ],
+                                                        "items": {
+                                                            "type": "integer",
+                                                            "minimum": 0,
+                                                            "maximum": 255
+                                                        }
+                                                    },
+                                                    "description": "Start objects serialized as JSON. Requires class to identify the object type."
+                                                },
+                                                "queries": {
+                                                    "type": [
+                                                        "null",
+                                                        "array"
+                                                    ],
+                                                    "items": {
+                                                        "type": "string"
+                                                    },
+                                                    "description": "Queries for starting objects in DOMAIN:CLASS:SELECTOR format."
+                                                }
+                                            },
+                                            "description": "Starting point for the search.",
+                                            "additionalProperties": false
+                                        }
+                                    },
+                                    "description": "Parameters for a neighborhood correlation search.",
+                                    "required": [
+                                        "depth",
+                                        "start"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            },
+                            "description": "The troubleshooting panel displays the results of this correlation search.",
+                            "additionalProperties": false
+                        },
+                        "view": {
+                            "type": "string",
+                            "description": "Query for the main console view, in DOMAIN:CLASS:SELECTOR format."
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "name": "show_in_console"
+            }
+        ]
+    }
+}

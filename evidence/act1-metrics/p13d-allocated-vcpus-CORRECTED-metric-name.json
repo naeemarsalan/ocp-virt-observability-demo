@@ -1,0 +1,1 @@
+{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"kubevirt_vmi_vcpu_count","managed_cluster":"dfceb808-7f9a-458f-b678-ceec0973a7f8","name":"vm-demo","namespace":"demo-vms","node":"24-6e-96-33-24-90","prometheus":"openshift-monitoring/k8s"},"value":[1789134453.897,"2"]}],"analysis":{}}}

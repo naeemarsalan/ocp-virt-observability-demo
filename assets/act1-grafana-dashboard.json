@@ -36,7 +36,7 @@
       },
       "id": 1001,
       "panels": [],
-      "title": "A. Depth check \u2014 distinct series available for THIS ONE VM",
+      "title": "A. Depth check, distinct series available for THIS ONE VM",
       "type": "row"
     },
     {
@@ -44,7 +44,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Every distinct time series (metric name x label combination) currently scraped for this VMI. Multi-instance metrics (per-vCPU, per-vNIC, per-drive) each contribute one series per instance \u2014 this is the honest Prometheus definition of 'series', not 'metric names'.",
+      "description": "Every distinct time series (metric name x label combination) currently scraped for this VMI. Multi-instance metrics (per-vCPU, per-vNIC, per-drive) each contribute one series per instance, this is the honest Prometheus definition of 'series', not 'metric names'. Confirmed live against vm-demo in demo-vms on 2026-09-11: 61.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -107,7 +107,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Adds VM-level series (kubevirt_vm_info, kubevirt_vm_resource_requests/limits, kubevirt_vm_disk_allocated_size_bytes, kubevirt_vm_labels, lifecycle timestamps) that exist even while the VM is stopped.",
+      "description": "Adds VM-level series (kubevirt_vm_info, kubevirt_vm_resource_requests/limits, kubevirt_vm_disk_allocated_size_bytes, kubevirt_vm_labels, lifecycle timestamps) that exist even while the VM is stopped. Confirmed live against the same VM: 72.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -170,7 +170,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "THE ACTUAL COMPARISON POINT. Joins on the virt-launcher pod's kube-state-metrics label vm.kubevirt.io/name=<vm> (a real label, not an ownerReference \u2014 see Korrel8r note below) to pull in every standard cAdvisor container_* and kube-state-metrics kube_pod_* series for that VM's compute pod: cgroup CPU/mem/network/PSI-if-enabled, restart counts, resource requests/limits, node placement, etc. This is what 'same open store, joinable by ordinary labels' means concretely.",
+      "description": "THE ACTUAL COMPARISON POINT. The original group_left() form of this join errors on this cluster's Thanos querier with \"multiple matches for labels: grouping labels must ensure unique matches\", both because a live migration briefly leaves two virt-launcher pods carrying the same vm.kubevirt.io/name label, and because a __name__ regex selector combined with group_left() fails on this build even with one pod. The fixed query below drops group_left() for a plain and on(namespace,pod) membership filter, since this panel only ever needed a count() of the joined series, not the multiplied values. Confirmed live: 345 for the pod-joined half (add the 72 from the panel to the left for the combined total); that 345 is inflated by a concurrent live migration's transient second pod and should roughly halve once the old pod is garbage-collected. This is what 'same open store, joinable by ordinary labels' means concretely.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -218,14 +218,14 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(count({namespace=\"$namespace\", name=\"$vm\", __name__=~\"kubevirt_(vmi|vm)_.*\"}) or vector(0))\n+\n(count(\n  {namespace=\"$namespace\", __name__=~\"container_.*|kube_pod_.*\"}\n  * on(namespace,pod) group_left()\n  (kube_pod_labels{namespace=\"$namespace\", label_vm_kubevirt_io_name=\"$vm\"} * 0 + 1)\n) or vector(0))",
+          "expr": "(count({namespace=\"$namespace\", name=\"$vm\", __name__=~\"kubevirt_(vmi|vm)_.*\"}) or vector(0))\n+\n(count(\n  {namespace=\"$namespace\", __name__=~\"container_.*|kube_pod_.*\"}\n  and on(namespace,pod)\n  kube_pod_labels{namespace=\"$namespace\", label_vm_kubevirt_io_name=\"$vm\"}\n) or vector(0))",
           "legendFormat": "total joinable series",
           "refId": "A",
           "instant": true,
           "range": false
         }
       ],
-      "title": "+ virt-launcher pod series (container_*, kube_pod_*)",
+      "title": "+ virt-launcher pod series (container_*, kube_pod_*), corrected join",
       "type": "stat"
     },
     {
@@ -242,7 +242,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "**Do not present this as \"we expose more metrics than vCenter.\"**\n\nvCenter/Aria expose a **fixed counter set per statistics level (1-4)** \u2014 it does not grow or shrink per VM the way a label-indexed TSDB does, so a raw side-by-side count is apples-to-oranges and an architect will call it out.\n\nThe defensible claim is narrower and stronger: **every one of these series is independently queryable, joinable by arbitrary label, and reachable with ordinary PromQL \u2014 right now, with no SDK, no vRealize add-on, no PowerCLI script.** Lead with that sentence, not the number.",
+        "content": "**Do not present this as \"we expose more metrics than vCenter.\"**\n\nvCenter/Aria expose a **fixed counter set per statistics level (1-4)**, it does not grow or shrink per VM the way a label-indexed TSDB does, so a raw side-by-side count is apples-to-oranges and an architect will call it out.\n\nThe defensible claim is narrower and stronger: **every one of these series is independently queryable, joinable by arbitrary label, and reachable with ordinary PromQL, right now, with no SDK, no vRealize add-on, no PowerCLI script.** Lead with that sentence, not the number.",
         "mode": "markdown"
       },
       "title": "Read this before you show it",
@@ -262,7 +262,7 @@
       },
       "id": 1006,
       "panels": [],
-      "title": "B. Standard CPU / memory / network / storage (parity with vCenter \u2014 same open store)",
+      "title": "B. Standard CPU / memory / network / storage (parity with vCenter, same open store)",
       "type": "row"
     },
     {
@@ -353,7 +353,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Recording rule. No prerequisite.",
+      "description": "Raw metric, not a recording rule: vmi:kubevirt_vmi_vcpu:count does not exist on this build (0 series, confirmed live). kubevirt_vmi_vcpu_count is the real metric (2 for vm-demo, confirmed live). No prerequisite.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -423,7 +423,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "vmi:kubevirt_vmi_vcpu:count{namespace=\"$namespace\", name=\"$vm\"}",
+          "expr": "kubevirt_vmi_vcpu_count{namespace=\"$namespace\", name=\"$vm\"}",
           "legendFormat": "allocated vcpus",
           "refId": "A"
         }
@@ -528,7 +528,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "No prerequisite. Verify the `interface` label exists in your build via the preflight script \u2014 if it does not, drop the `by (interface)` grouping.",
+      "description": "No prerequisite. Verify the `interface` label exists in your build via the preflight script, if it does not, drop the `by (interface)` grouping.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -730,7 +730,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "No prerequisite. Verify the `drive` label via preflight. \u26a0 KubeVirt's own e2e coverage for storage read/write bytes was flaky/quarantined in CI (Aug 2026), timing-correlated with a fix that skips domain-stats collection during live migration \u2014 expect possible gaps in this panel during the migration beat below.",
+      "description": "No prerequisite. Verify the `drive` label via preflight. ⚠ KubeVirt's own e2e coverage for storage read/write bytes was flaky/quarantined in CI (Aug 2026), timing-correlated with a fix that skips domain-stats collection during live migration, expect possible gaps in this panel during the migration beat below.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -857,7 +857,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Native histogram, no prerequisite. GAP vs VMware: vCenter has only raw create/power-on Get-VIEvent timestamps, no distribution. NOTE: a single VM rarely generates enough samples for a meaningful quantile alone \u2014 for the live demo, drop the {name=\"$vm\"} filter to show the FLEET distribution, then point at this VM's individual transition on the timeline.",
+      "description": "Native histogram, no prerequisite, but this metric is emitted by virt-controller in namespace openshift-cnv with a phase label and no per-VM name or namespace label at all, confirmed live. A {namespace=\"$namespace\",name=\"$vm\"} filter can never return data for this metric; this panel is fleet-wide by phase, not per-VM. With only one or two migrations on a quiet cluster, rate() over a single bucket observation returns NaN; read _sum{phase=...} and _count{phase=...} directly instead. Live example: for phase=Succeeded, _sum=47 and _count=1, meaning the one observation on record was exactly 47 seconds.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -927,7 +927,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(kubevirt_vmi_phase_transition_time_from_creation_seconds_bucket{namespace=\"$namespace\", name=\"$vm\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.50, sum by (le, phase) (rate(kubevirt_vmi_phase_transition_time_from_creation_seconds_bucket[$__rate_interval])))",
           "legendFormat": "p50",
           "refId": "A"
         },
@@ -936,7 +936,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(kubevirt_vmi_phase_transition_time_from_creation_seconds_bucket{namespace=\"$namespace\", name=\"$vm\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le, phase) (rate(kubevirt_vmi_phase_transition_time_from_creation_seconds_bucket[$__rate_interval])))",
           "legendFormat": "p95",
           "refId": "B"
         },
@@ -945,12 +945,12 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(kubevirt_vmi_phase_transition_time_from_creation_seconds_bucket{namespace=\"$namespace\", name=\"$vm\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum by (le, phase) (rate(kubevirt_vmi_phase_transition_time_from_creation_seconds_bucket[$__rate_interval])))",
           "legendFormat": "p99",
           "refId": "C"
         }
       ],
-      "title": "Phase-transition latency (creation \u2192 phase), p50/p95/p99",
+      "title": "Phase-transition latency (creation to phase), fleet-wide by phase, p50/p95/p99",
       "type": "timeseries"
     },
     {
@@ -1050,7 +1050,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "No prerequisite. PARTIAL vs VMware: Aria has Consumed/Balloon%/Guest Free/Needed \u2014 a different model, no 1:1 mapping. Not accurate if the guest OS hasn't initialized all assigned pages.",
+      "description": "No prerequisite. PARTIAL vs VMware: Aria has Consumed/Balloon%/Guest Free/Needed, a different model, no 1:1 mapping. Not accurate if the guest OS hasn't initialized all assigned pages.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1142,7 +1142,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "REQUIRES qemu-guest-agent >= 10.0.0 in the guest. GAP vs VMware: VMware Tools does not expose a load average even when installed \u2014 no panel, silently blank, if the agent isn't present or is older.",
+      "description": "REQUIRES qemu-guest-agent >= 10.0.0 in the guest. GAP vs VMware: VMware Tools does not expose a load average even when installed, no panel, silently blank, if the agent isn't present or is older.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1243,7 +1243,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "REQUIRES the schedstats=enable kernel argument applied cluster-wide via a worker MachineConfig. With no MachineConfig applied this panel is SILENTLY BLANK \u2014 no error, just 'No data'. CLOSE vs VMware: Aria CPU Ready % (delay) / CPU Other Wait ms (wait).",
+      "description": "REQUIRES the schedstats=enable kernel argument applied cluster-wide via a worker MachineConfig. With no MachineConfig applied this panel is SILENTLY BLANK, no error, just 'No data'. CLOSE vs VMware: Aria CPU Ready % (delay) / CPU Other Wait ms (wait).",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1398,7 +1398,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "No prerequisite (boolean gauge; only meaningful if evictionStrategy: LiveMigrate is set on the VM). GAP vs VMware: no equivalent gauge. Alert: VMCannotBeEvicted (verified runbook).",
+      "description": "No prerequisite (boolean gauge; only meaningful if evictionStrategy: LiveMigrate is set on the VM). GAP vs VMware: no equivalent gauge. Alert: VMCannotBeEvicted, confirmed firing live for vm-non-migratable at 13:24:44Z. Note: the firing alert's own 'pod' label points at the exporting virt-handler pod, not at the VM's virt-launcher pod; use the VMI's name/namespace, not that label, to find the actual workload pod.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1461,7 +1461,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "No prerequisite. GAP vs VMware: vCenter logs console-access events but exposes no rolled-up idle/security gauge.",
+      "description": "No prerequisite, but the per-VM label on this metric is vmi, not name, confirmed live (sample labelset carries vmi, no name field). GAP vs VMware: vCenter logs console-access events but exposes no rolled-up idle/security gauge.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1509,7 +1509,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "time() - kubevirt_vmi_last_api_connection_timestamp_seconds{namespace=\"$namespace\", name=\"$vm\"}",
+          "expr": "time() - kubevirt_vmi_last_api_connection_timestamp_seconds{namespace=\"$namespace\", vmi=\"$vm\"}",
           "legendFormat": "seconds since last access",
           "refId": "A",
           "instant": true,
@@ -1524,7 +1524,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "No prerequisite. Cluster-wide gauge, not scoped to a single VM (shown here for fleet context after a CNV upgrade). GAP vs VMware: architecturally no analog; closest is VMware Tools version status. Alert: OutdatedVirtualMachineInstanceWorkloads (verified runbook).",
+      "description": "No prerequisite. Cluster-wide gauge, not scoped to a single VM (shown here for fleet context after a CNV upgrade). Confirmed live at 21, flat for at least 7 days across 7 namespaces. GAP vs VMware: architecturally no analog; closest is VMware Tools version status. Alert: OutdatedVirtualMachineInstanceWorkloads (for: 24h) has stayed Pending all week on this cluster, not because 21 is a borderline number, but because both virt-controller replicas restart on leader-election lease-renewal failures (106 and 105 restarts each over 7 days) and every restart resets the alert's 24h pending timer (36 resets observed in 7 days). Demo the gauge and 'oc get vmi -A -l kubevirt.io/outdatedLauncherImage' on stage; do not promise the alert will fire.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1596,7 +1596,7 @@
       },
       "id": 1023,
       "panels": [],
-      "title": "D. Live migration beat \u2014 trigger `virtctl migrate $vm` and watch it happen",
+      "title": "D. Live migration beat, trigger `virtctl migrate $vm` and watch it happen",
       "type": "row"
     },
     {
@@ -1624,7 +1624,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "No prerequisite. GAP vs VMware: vSphere shows only an ephemeral % progress bar during the migration and nothing after \u2014 this is a queryable, historically-retained time series.",
+      "description": "No prerequisite. GAP vs VMware: vSphere shows only an ephemeral % progress bar during the migration and nothing after, this is a queryable, historically-retained time series.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1716,7 +1716,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "No prerequisite. GAP vs VMware: vSphere 8 gives total MB moved AFTER completion, not a live rate.",
+      "description": "kubevirt_vmi_migration_memory_transfer_rate_bytes does not exist on this build; the real metric is kubevirt_vmi_migration_disk_transfer_rate_bytes, confirmed live. This demo's own migration returned one sampled value, 466,555,260 bytes/sec (about 445 MiB/s), because the 14 second live-copy phase was shorter than the scrape interval; treat that as the one rate sample KubeVirt exposed, not a verified peak. GAP vs VMware: vSphere 8 gives total MB moved after completion, not a live rate at all.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1786,12 +1786,12 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "kubevirt_vmi_migration_memory_transfer_rate_bytes{namespace=\"$namespace\", name=\"$vm\"}",
+          "expr": "kubevirt_vmi_migration_disk_transfer_rate_bytes{namespace=\"$namespace\", name=\"$vm\"}",
           "legendFormat": "transfer rate",
           "refId": "A"
         }
       ],
-      "title": "Live memory transfer rate",
+      "title": "Live disk transfer rate",
       "type": "timeseries"
     },
     {
@@ -1799,7 +1799,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "No prerequisite. Cluster-wide queue depth, not scoped to $vm \u2014 this is what makes it a real queue, not a per-migration progress bar. GAP vs VMware: Aria counts COMPLETED vMotions per host; no live queue.",
+      "description": "No prerequisite. Cluster-wide queue depth, not scoped to $vm, this is what makes it a real queue, not a per-migration progress bar. GAP vs VMware: Aria counts COMPLETED vMotions per host; no live queue.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1909,7 +1909,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Native histogram, no prerequisite. GAP vs VMware: vSphere 8 vMotion counters give one point value per migration, no distribution across the fleet.",
+      "description": "Native histogram, no prerequisite, but same structural limit as the Row C phase-transition panel: no per-VM label, virt-controller namespace only, confirmed live. With a single live migration, rate() on one bucket observation returns NaN; use _sum{phase=...}/_count{phase=...} for the exact wall time instead. This demo's own migration: _sum=47, _count=1 for phase=Succeeded (47 second total, 13:37:45Z to 13:38:32Z).",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1979,12 +1979,12 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(kubevirt_vmi_migration_phase_transition_time_from_creation_seconds_bucket{namespace=\"$namespace\", name=\"$vm\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le, phase) (rate(kubevirt_vmi_migration_phase_transition_time_from_creation_seconds_bucket[$__rate_interval])))",
           "legendFormat": "p95 migration phase latency",
           "refId": "A"
         }
       ],
-      "title": "Migration phase-transition latency, p95 (live)",
+      "title": "Migration phase-transition latency, fleet-wide by phase (live)",
       "type": "timeseries"
     },
     {
@@ -1992,7 +1992,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "\u26a0 OPEN BUG CNV-94992: kubevirt_vmi_dirty_rate_bytes_per_second has been measured off by 2-3 orders of magnitude vs ground truth. Show this panel ONLY as a directional trend line (is it rising or falling), never read a number off it out loud, and disclose the bug if asked. vSphere never surfaces this counter at all \u2014 ESXi uses it internally for vMotion convergence decisions but does not expose it \u2014 so even a buggy version is more than VMware shows, but frame it as 'this is the metric we're actively fixing,' not a win.",
+      "description": "⚠ OPEN BUG CNV-94992: kubevirt_vmi_dirty_rate_bytes_per_second has been measured off by 2-3 orders of magnitude vs ground truth. Show this panel ONLY as a directional trend line (is it rising or falling), never read a number off it out loud, and disclose the bug if asked. vSphere never surfaces this counter at all, ESXi uses it internally for vMotion convergence decisions but does not expose it, so even a buggy version is more than VMware shows, but frame it as 'this is the metric we're actively fixing,' not a win.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2076,7 +2076,7 @@
           "refId": "B"
         }
       ],
-      "title": "\u26a0 Dirty-memory rate \u2014 KNOWN ACCURACY BUG, do not quote absolute values",
+      "title": "⚠ Dirty-memory rate, KNOWN ACCURACY BUG, do not quote absolute values",
       "type": "timeseries"
     },
     {
@@ -2093,7 +2093,7 @@
           "showLineNumbers": false,
           "showMiniMap": false
         },
-        "content": "KubeVirt's own e2e tests for storage read/write bytes and **flush requests/times** were flaky/quarantined in CI (Aug 2026), timing-correlated with a fix that **skips domain-stats collection during live migration**.\n\n**Translation for the demo:** the Row B storage IOPS/throughput panels for *this VM* may flatten or gap for a few seconds while the migration in this row is in flight. That is a known, disclosed limitation \u2014 do not let it read as a broken dashboard live.",
+        "content": "KubeVirt's own e2e tests for storage read/write bytes and **flush requests/times** were flaky/quarantined in CI (Aug 2026), timing-correlated with a fix that **skips domain-stats collection during live migration**.\n\n**Translation for the demo:** the Row B storage IOPS/throughput panels for *this VM* may flatten or gap for a few seconds while the migration in this row is in flight. That is a known, disclosed limitation, do not let it read as a broken dashboard live.",
         "mode": "markdown"
       },
       "title": "Storage-metric caveat during this migration window",
@@ -2113,7 +2113,7 @@
       },
       "id": 1031,
       "panels": [],
-      "title": "E. Slice by ANY label, fleet-wide \u2014 no PowerCLI scripting required",
+      "title": "E. Slice by ANY label, fleet-wide, no PowerCLI scripting required",
       "type": "row"
     },
     {
@@ -2204,7 +2204,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Slice by NAMESPACE. Recording rule, no prerequisite. A vCenter admin gets this from a Folder/Resource Pool view configured in advance; here it is one label on an ad hoc query against any metric.",
+      "description": "Slice by NAMESPACE. Raw-metric fallback, not a recording rule: namespace:kubevirt_vm:sum does not exist on this build (confirmed live, empty result). count by (namespace) (kubevirt_vmi_info) is the working replacement. A vCenter admin gets this from a Folder/Resource Pool view configured in advance; here it is one label on an ad hoc query against any metric.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2274,7 +2274,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "namespace:kubevirt_vm:sum",
+          "expr": "count by (namespace) (kubevirt_vmi_info)",
           "legendFormat": "{{namespace}}",
           "refId": "A"
         }
@@ -2287,7 +2287,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Slice by INSTANCETYPE LABEL. Verify the `instance_type` label on kubevirt_vmi_info in your build via the preflight script (recent KubeVirt versions add it; not guaranteed on every build). No vCenter equivalent \u2014 instance types/preferences are a KubeVirt-native concept.",
+      "description": "Slice by INSTANCETYPE LABEL. Verify the `instance_type` label on kubevirt_vmi_info in your build via the preflight script (recent KubeVirt versions add it; not guaranteed on every build). No vCenter equivalent, instance types/preferences are a KubeVirt-native concept.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -2339,7 +2339,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Slice by a label YOU put on the VM object (here: `team`). Requires the label to be allow-listed in the 'kubevirt-vm-labels-config' ConfigMap so kubevirt_vm_labels exposes it as label_team. Replace 'team' with your own key (e.g. cost_center, environment, owner). This join \u2014 arbitrary business label to live usage \u2014 is exactly the PowerCLI-scripting case for a vCenter admin; here it is one PromQL join.",
+      "description": "Slice by a label YOU put on the VM's pod (here: tier, confirmed live on this cluster's demo VMs: db, web, nonmigratable). kubevirt_vm_labels does not exist on this cluster at all (0 series, confirmed live), so this join goes through kube_pod_labels instead: label_replace copies the pod's label_vm_kubevirt_io_name value into a name label so it can join on (namespace, name) against the VMI's own CPU series. Replace 'tier' with your own allow-listed pod label key. This join, an arbitrary business label to live usage, is exactly the PowerCLI-scripting case for a vCenter admin; here it is one PromQL join.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2409,7 +2409,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (label_team) (\n  sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=\"$namespace\"}[$__rate_interval]))\n  * on(namespace, name) group_left(label_team)\n  kubevirt_vm_labels{namespace=\"$namespace\"}\n)",
+          "expr": "sum by (label_tier) (\n  sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total{namespace=\"$namespace\"}[$__rate_interval]))\n  * on(namespace, name) group_left(label_tier)\n  label_replace(kube_pod_labels{namespace=\"$namespace\", label_kubevirt_io=\"virt-launcher\"}, \"name\", \"$1\", \"label_vm_kubevirt_io_name\", \"(.+)\")\n)",
           "legendFormat": "team={{label_team}}",
           "refId": "A"
         }
@@ -2422,7 +2422,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "TOP-K across the fleet, not scoped to $namespace/$vm on purpose. No prerequisite. Swap the metric for cpu_usage_seconds_total, storage_iops_*, or memory_usable_bytes for other fleet-wide leaderboards \u2014 same one-line pattern every time.",
+      "description": "TOP-K across the fleet, not scoped to $namespace/$vm on purpose. No prerequisite. Swap the metric for cpu_usage_seconds_total, storage_iops_*, or memory_usable_bytes for other fleet-wide leaderboards, same one-line pattern every time.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -2568,7 +2568,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "OCP Virt \u2014 Act 1: One VM, Side by Side",
+  "title": "OCP Virt (Act 1): One VM, Side by Side",
   "description": "Demo dashboard for the OpenShift Virtualization vs VMware observability walkthrough, Act 1 (depth on a single VM). Targets OpenShift 4.20 / OpenShift Virtualization 4.20. Pin the datasource UID, namespace, and VM name via the template variables above before presenting; run scratchpad/demo/preflight.sh against the real cluster first.",
   "uid": "ocpvirt-act1-vm-depth",
   "version": 1,

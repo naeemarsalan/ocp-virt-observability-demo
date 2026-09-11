@@ -1,0 +1,6 @@
+NAME                                    READY   STATUS      RESTARTS   AGE     IP             NODE                NOMINATED NODE   READINESS GATES
+korrel8r-demo-7596984744-8clbm          1/1     Running     0          7m37s   10.130.0.230   24-6e-96-33-24-90   <none>           <none>
+virt-launcher-vm-demo-2-9882n           2/2     Running     0          29m     10.128.1.48    ec-f4-bb-ed-07-a8   <none>           1/1
+virt-launcher-vm-demo-b5lpj             2/2     Running     0          3m43s   10.130.0.232   24-6e-96-33-24-90   <none>           1/1
+virt-launcher-vm-demo-fx5hg             0/2     Completed   0          29m     10.128.1.49    ec-f4-bb-ed-07-a8   <none>           1/1
+virt-launcher-vm-non-migratable-xrsp6   2/2     Running     0          37m     10.128.1.43    ec-f4-bb-ed-07-a8   <none>           1/1

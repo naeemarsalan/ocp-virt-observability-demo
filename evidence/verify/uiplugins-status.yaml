@@ -1,0 +1,78 @@
+=== UIPlugin troubleshooting-panel status ===
+apiVersion: observability.openshift.io/v1alpha1
+kind: UIPlugin
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"observability.openshift.io/v1alpha1","kind":"UIPlugin","metadata":{"annotations":{},"name":"troubleshooting-panel"},"spec":{"troubleshootingPanel":{"timeout":"30s"},"type":"TroubleshootingPanel"}}
+    observability.openshift.io/api-support: GeneralAvailability
+  creationTimestamp: "2026-09-11T12:58:34Z"
+  generation: 1
+  name: troubleshooting-panel
+  resourceVersion: "1198124728"
+  uid: 1f5e5654-c0a4-4087-b61b-68ad29a2d812
+spec:
+  troubleshootingPanel:
+    timeout: 30s
+  type: TroubleshootingPanel
+status:
+  conditions:
+  - lastTransitionTime: "2026-09-11T12:58:44Z"
+    message: Plugin reconciled successfully
+    observedGeneration: 1
+    reason: UIPluginReconciled
+    status: "True"
+    type: Reconciled
+  - lastTransitionTime: "2026-09-11T12:58:44Z"
+    message: ""
+    observedGeneration: 1
+    reason: UIPluginReconciled
+    status: "False"
+    type: Degraded
+  - lastTransitionTime: "2026-09-11T12:58:44Z"
+    message: ""
+    observedGeneration: 1
+    reason: UIPluginAvailable
+    status: "True"
+    type: Available
+
+=== UIPlugin logging status ===
+apiVersion: observability.openshift.io/v1alpha1
+kind: UIPlugin
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"observability.openshift.io/v1alpha1","kind":"UIPlugin","metadata":{"annotations":{},"name":"logging"},"spec":{"logging":{"logsLimit":50,"lokiStack":{"name":"logging-loki"},"timeout":"30s"},"type":"Logging"}}
+    observability.openshift.io/api-support: GeneralAvailability
+  creationTimestamp: "2026-09-11T13:07:44Z"
+  generation: 1
+  name: logging
+  resourceVersion: "1198151975"
+  uid: 7dbaf4c9-b3e7-4eb9-86d3-cc951b101da3
+spec:
+  logging:
+    logsLimit: 50
+    lokiStack:
+      name: logging-loki
+    timeout: 30s
+  type: Logging
+status:
+  conditions:
+  - lastTransitionTime: "2026-09-11T13:13:03Z"
+    message: ""
+    observedGeneration: 1
+    reason: UIPluginReconciled
+    status: "False"
+    type: Degraded
+  - lastTransitionTime: "2026-09-11T13:13:03Z"
+    message: Plugin reconciled successfully
+    observedGeneration: 1
+    reason: UIPluginReconciled
+    status: "True"
+    type: Reconciled
+  - lastTransitionTime: "2026-09-11T13:13:03Z"
+    message: ""
+    observedGeneration: 1
+    reason: UIPluginAvailable
+    status: "True"
+    type: Available

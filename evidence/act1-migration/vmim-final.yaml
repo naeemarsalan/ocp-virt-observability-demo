@@ -1,0 +1,62 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachineInstanceMigration
+metadata:
+  annotations:
+    kubevirt.io/latest-observed-api-version: v1
+    kubevirt.io/storage-observed-api-version: v1
+  creationTimestamp: "2026-09-11T13:37:45Z"
+  generateName: kubevirt-migrate-vm-
+  generation: 1
+  labels:
+    kubevirt.io/vmi-name: vm-demo
+  name: kubevirt-migrate-vm-vt94m
+  namespace: demo-vms
+  resourceVersion: "1198209369"
+  uid: 69aa2389-ca18-41ec-9a05-8717db3d397f
+spec:
+  vmiName: vm-demo
+status:
+  migrationState:
+    completed: true
+    endTimestamp: "2026-09-11T13:38:31Z"
+    migrationConfiguration:
+      allowAutoConverge: false
+      allowPostCopy: false
+      allowWorkloadDisruption: false
+      bandwidthPerMigration: "0"
+      completionTimeoutPerGiB: 150
+      nodeDrainTaintKey: kubevirt.io/drain
+      parallelMigrationsPerCluster: 5
+      parallelOutboundMigrationsPerNode: 2
+      progressTimeout: 150
+      unsafeMigrationOverride: false
+    migrationUid: 69aa2389-ca18-41ec-9a05-8717db3d397f
+    mode: PreCopy
+    sourceNode: ec-f4-bb-ed-07-a8
+    sourcePod: virt-launcher-vm-demo-fx5hg
+    startTimestamp: "2026-09-11T13:38:17Z"
+    targetDirectMigrationNodePorts:
+      "40877": 0
+      "41387": 49152
+      "45517": 49153
+    targetNode: 24-6e-96-33-24-90
+    targetNodeAddress: 10.130.0.131
+    targetNodeDomainDetected: true
+    targetNodeDomainReadyTimestamp: "2026-09-11T13:38:31Z"
+    targetPod: virt-launcher-vm-demo-b5lpj
+  phase: Succeeded
+  phaseTransitionTimestamps:
+  - phase: Pending
+    phaseTransitionTimestamp: "2026-09-11T13:37:46Z"
+  - phase: Scheduling
+    phaseTransitionTimestamp: "2026-09-11T13:37:48Z"
+  - phase: Scheduled
+    phaseTransitionTimestamp: "2026-09-11T13:37:57Z"
+  - phase: PreparingTarget
+    phaseTransitionTimestamp: "2026-09-11T13:37:59Z"
+  - phase: TargetReady
+    phaseTransitionTimestamp: "2026-09-11T13:38:17Z"
+  - phase: Running
+    phaseTransitionTimestamp: "2026-09-11T13:38:18Z"
+  - phase: Succeeded
+    phaseTransitionTimestamp: "2026-09-11T13:38:32Z"

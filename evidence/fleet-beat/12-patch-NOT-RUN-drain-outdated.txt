@@ -1,0 +1,28 @@
+The following command is evidence-only. It was NOT executed (guardrail: never patch the
+HyperConverged CR). Shown here to document what the fix would look like.
+
+Current state (from 07-hyperconverged-full.json):
+  spec.workloadUpdateStrategy.workloadUpdateMethods = []   (empty -> HCO takes no automatic action)
+  spec.workloadUpdateStrategy.batchEvictionInterval = "10m0s"
+  spec.workloadUpdateStrategy.batchEvictionSize = 1
+
+To make HCO live-migrate every outdated-but-migratable VMI automatically (batches of 1, every 10m):
+
+  oc patch hco kubevirt-hyperconverged -n openshift-cnv --type=merge \
+    -p '{"spec":{"workloadUpdateStrategy":{"workloadUpdateMethods":["LiveMigrate"]}}}'
+
+To also cover VMIs that cannot be live-migrated (e.g. vm-non-migratable, RWO block disk) by evicting
+(deleting/restarting) them instead, the method list would be:
+
+  oc patch hco kubevirt-hyperconverged -n openshift-cnv --type=merge \
+    -p '{"spec":{"workloadUpdateStrategy":{"workloadUpdateMethods":["LiveMigrate","Evict"]}}}'
+
+Caveats worth knowing before ever running this:
+  - Evict deletes+recreates the VMI's pod for any VM that cannot be live-migrated -- that is a
+    real interruption, not a live migration, for VMs like vm-non-migratable.
+  - This is a cluster-wide setting on the HyperConverged CR (openshift-cnv namespace, not
+    demo-vms) -- it would affect all 21 outdated VMIs across 7 namespaces (aap-edb-vms, anaeem,
+    asaran, default, hammer, joon, shannon), <vm> <vm> <vm> <vm> <vm> That is <vm> it is
+    excluded from this demo's guardrails.
+  - batchEvictionSize=1 / batchEvictionInterval=10m means a full cluster-wide drain of 21 VMIs
+    would take roughly 21 * 10m = ~3.5 hours even once enabled.

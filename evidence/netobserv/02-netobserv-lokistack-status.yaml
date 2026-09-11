@@ -1,0 +1,77 @@
+apiVersion: loki.grafana.com/v1
+kind: LokiStack
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"loki.grafana.com/v1","kind":"LokiStack","metadata":{"annotations":{},"name":"loki","namespace":"netobserv"},"spec":{"managementState":"Managed","size":"1x.demo","storage":{"schemas":[{"effectiveDate":"2024-01-01","version":"v13"}],"secret":{"name":"loki-netobserv-s3","type":"s3"}},"storageClassName":"nfs-csi","tenants":{"mode":"openshift-network"}}}
+  creationTimestamp: "2026-09-11T13:18:21Z"
+  generation: 1
+  name: loki
+  namespace: netobserv
+  resourceVersion: "1198168838"
+  uid: a3a45810-253b-461c-a8fc-20ee47cf2c9f
+spec:
+  managementState: Managed
+  size: 1x.demo
+  storage:
+    schemas:
+    - effectiveDate: "2024-01-01"
+      version: v13
+    secret:
+      name: loki-netobserv-s3
+      type: s3
+  storageClassName: nfs-csi
+  tenants:
+    mode: openshift-network
+status:
+  components:
+    compactor:
+      Ready:
+      - loki-compactor-0
+    distributor:
+      Ready:
+      - loki-distributor-6d456f7877-lmqdq
+    gateway:
+      Ready:
+      - loki-gateway-7bfcb9fd97-v9ln5
+      - loki-gateway-7bfcb9fd97-bl2lp
+    indexGateway:
+      Ready:
+      - loki-index-gateway-0
+    ingester:
+      Ready:
+      - loki-ingester-0
+    querier:
+      Ready:
+      - loki-querier-5767df7cf4-tnzzk
+    queryFrontend:
+      Ready:
+      - loki-query-frontend-6b64bbf4f8-t8zrz
+    ruler:
+      Failed: []
+      Pending: []
+      Ready: []
+      Running: []
+  conditions:
+  - lastTransitionTime: "2026-09-11T13:19:45Z"
+    message: The ingester replicas (1) are less than or equal to the replication factor
+      (1). Which causes log ingestion to stop when ingester pods get restarted.
+    reason: InsufficientIngesterReplicas
+    status: "True"
+    type: Warning
+  - lastTransitionTime: "2026-09-11T13:19:45Z"
+    message: All components ready
+    reason: ReadyComponents
+    status: "True"
+    type: Ready
+  - lastTransitionTime: "2026-09-11T13:19:45Z"
+    message: All components are running, but some readiness checks are failing
+    reason: PendingComponents
+    status: "False"
+    type: Pending
+  networkPolicyRuleSet: None
+  storage:
+    credentialMode: static
+    schemas:
+    - effectiveDate: "2024-01-01"
+      version: v13

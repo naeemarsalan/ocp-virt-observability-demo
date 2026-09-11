@@ -1,0 +1,95 @@
+apiVersion: v1
+items:
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRoleBinding
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"ClusterRoleBinding","metadata":{"annotations":{},"name":"demo-collector-collect-application-logs"},"roleRef":{"apiGroup":"rbac.authorization.k8s.io","kind":"ClusterRole","name":"collect-application-logs"},"subjects":[{"kind":"ServiceAccount","name":"demo-collector","namespace":"openshift-logging"}]}
+    creationTimestamp: "2026-09-11T13:07:41Z"
+    name: demo-collector-collect-application-logs
+    resourceVersion: "1198143132"
+    uid: 25102770-3aba-401e-bc32-8f00cd50bd7e
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: collect-application-logs
+  subjects:
+  - kind: ServiceAccount
+    name: demo-collector
+    namespace: openshift-logging
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRoleBinding
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"ClusterRoleBinding","metadata":{"annotations":{},"name":"demo-collector-collect-infrastructure-logs"},"roleRef":{"apiGroup":"rbac.authorization.k8s.io","kind":"ClusterRole","name":"collect-infrastructure-logs"},"subjects":[{"kind":"ServiceAccount","name":"demo-collector","namespace":"openshift-logging"}]}
+    creationTimestamp: "2026-09-11T13:07:41Z"
+    name: demo-collector-collect-infrastructure-logs
+    resourceVersion: "1198143147"
+    uid: 58918836-2ab0-4c51-b880-0151ebf181ba
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: collect-infrastructure-logs
+  subjects:
+  - kind: ServiceAccount
+    name: demo-collector
+    namespace: openshift-logging
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRoleBinding
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"ClusterRoleBinding","metadata":{"annotations":{},"name":"demo-collector-logging-collector-logs-writer"},"roleRef":{"apiGroup":"rbac.authorization.k8s.io","kind":"ClusterRole","name":"logging-collector-logs-writer"},"subjects":[{"kind":"ServiceAccount","name":"demo-collector","namespace":"openshift-logging"}]}
+    creationTimestamp: "2026-09-11T13:07:41Z"
+    name: demo-collector-logging-collector-logs-writer
+    resourceVersion: "1198143196"
+    uid: 1d92e1ed-4e9c-45a1-9417-7271c8c6737e
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: logging-collector-logs-writer
+  subjects:
+  - kind: ServiceAccount
+    name: demo-collector
+    namespace: openshift-logging
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRoleBinding
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"ClusterRoleBinding","metadata":{"annotations":{},"name":"demo-collector-cluster-logging-application-view"},"roleRef":{"apiGroup":"rbac.authorization.k8s.io","kind":"ClusterRole","name":"cluster-logging-application-view"},"subjects":[{"kind":"ServiceAccount","name":"demo-collector","namespace":"openshift-logging"}]}
+    creationTimestamp: "2026-09-11T13:24:15Z"
+    name: demo-collector-cluster-logging-application-view
+    resourceVersion: "1198178200"
+    uid: fda9fb2c-3c75-47fe-8cee-b8d5bdc75e16
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: cluster-logging-application-view
+  subjects:
+  - kind: ServiceAccount
+    name: demo-collector
+    namespace: openshift-logging
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRoleBinding
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"ClusterRoleBinding","metadata":{"annotations":{},"name":"demo-collector-cluster-logging-infrastructure-view"},"roleRef":{"apiGroup":"rbac.authorization.k8s.io","kind":"ClusterRole","name":"cluster-logging-infrastructure-view"},"subjects":[{"kind":"ServiceAccount","name":"demo-collector","namespace":"openshift-logging"}]}
+    creationTimestamp: "2026-09-11T13:24:16Z"
+    name: demo-collector-cluster-logging-infrastructure-view
+    resourceVersion: "1198178272"
+    uid: 6acb55c6-10b2-4403-b2cf-19ad26189ef5
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: cluster-logging-infrastructure-view
+  subjects:
+  - kind: ServiceAccount
+    name: demo-collector
+    namespace: openshift-logging
+kind: List
+metadata:
+  resourceVersion: ""

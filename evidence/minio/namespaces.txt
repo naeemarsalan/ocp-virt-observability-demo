@@ -1,0 +1,6 @@
+NAME                         STATUS   AGE
+minio-demo                   Active   4m54s
+openshift-logging            Active   102d
+netobserv                    Active   4m52s
+demo-vms                     Active   4m50s
+openshift-operators-redhat   Active   4m50s

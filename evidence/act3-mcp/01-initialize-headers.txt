@@ -1,0 +1,8 @@
+HTTP/1.1 200 OK
+cache-control: no-cache, no-transform
+content-type: text/event-stream
+mcp-session-id: ABQ6F3QAFONIPTAEICRME2BH4V
+date: Fri, 11 Sep 2026 13:52:25 GMT
+transfer-encoding: chunked
+set-cookie: 308fc9da31b3d9a02c090e28c0fe87d4=27c8c250b72cfad82e5a625b10a39b83; path=/; HttpOnly; Secure; SameSite=None
+

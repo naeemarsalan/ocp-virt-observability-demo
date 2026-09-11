@@ -1,0 +1,1 @@
+      --mcp                         Enable MCP streamable HTTP protocol on /mcp (default true)

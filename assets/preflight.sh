@@ -240,7 +240,8 @@ fi
 hdr "10. Korrel8r: pod health, image tag, domains, and KubeVirt rules"
 K_NS_POD=$(oc get pods -A -l app.kubernetes.io/name=korrel8r --no-headers 2>/dev/null | head -1)
 if [[ -z "$K_NS_POD" ]]; then
-  K_NS_POD=$(oc get pods -A --no-headers 2>/dev/null | grep -m1 'korrel8r')
+  # fall back ONLY within the COO namespace, so a stray korrel8r deployment elsewhere is never mistaken for the operator's
+  K_NS_POD=$(oc get pods -n "$COO_NS" --no-headers 2>/dev/null | grep -m1 '^korrel8r-' | sed "s/^/$COO_NS /")
 fi
 if [[ -n "$K_NS_POD" ]]; then
   K_NS=$(awk '{print $1}' <<<"$K_NS_POD")
@@ -434,9 +435,9 @@ else
     # label_exists <label> <metric-or-selector-to-match-against>
     local label="$1" match="$2"
     local resp
-    resp=$(curl -sk -H "Authorization: Bearer ${THANOS_TOKEN}" \
+    resp=$(curl -sk -G -H "Authorization: Bearer ${THANOS_TOKEN}" \
       "https://${THANOS_ROUTE}/api/v1/label/${label}/values" \
-      --data-urlencode "match[]=${match}" 2>/dev/null)
+      --data-urlencode "match[]=${match}" 2>/dev/null)   # -G: label/values is a GET; without it curl POSTs and the route returns 405
     python3 -c '
 import sys, json
 try:

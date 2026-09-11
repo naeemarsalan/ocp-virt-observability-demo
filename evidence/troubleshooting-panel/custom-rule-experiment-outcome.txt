@@ -1,0 +1,6 @@
+restored 13:30:58Z: operator korrel8r 0.11.1 reloaded clean config
+Experiment: added AlertToVMI/VmiToLogs YAML rules (using the `required` template function from the 0.12 rule set) to the operator-managed korrel8r ConfigMap.
+Result 1: the Cluster Observability Operator reverted the ConfigMap within ~2 minutes (reconciled; custom rules do not persist).
+Result 2: the restarted 0.11.1 pod had loaded the patched config first, and the console Troubleshooting Panel then showed
+          "Search Error: invalid rule AlertToVMI: template: AlertToVMI:1: function "required" not defined" (screenshot panel-vmi-3-panel-open.png).
+Conclusion: do not hand-patch the operator's korrel8r config. The Alert->VMI and VMI->Logs rules require a newer korrel8r image (>=0.11.4 / 0.12.1), not configuration.

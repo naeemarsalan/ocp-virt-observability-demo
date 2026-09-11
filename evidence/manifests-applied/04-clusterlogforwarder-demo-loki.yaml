@@ -1,0 +1,51 @@
+# NEW ClusterLogForwarder, named 'demo-loki'. Does NOT touch the existing
+# CLF 'instance' or its 'collector' ServiceAccount.
+apiVersion: observability.openshift.io/v1
+kind: ClusterLogForwarder
+metadata:
+  name: demo-loki
+  namespace: openshift-logging
+spec:
+  serviceAccount:
+    name: demo-collector
+  # This is a busy shared cluster (28 VMIs, nested OpenShift, AAP) with a lot
+  # of pre-existing infrastructure log volume; the default 2Gi collector
+  # limit gets OOMKilled backfilling the 'infrastructure' input on startup.
+  collector:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 256Mi
+      limits:
+        cpu: "2"
+        memory: 4Gi
+  inputs:
+    - name: demo-app
+      type: application
+      application:
+        includes:
+          - namespace: demo-vms
+  outputs:
+    - name: default-lokistack
+      type: lokiStack
+      lokiStack:
+        target:
+          name: logging-loki
+          namespace: openshift-logging
+        authentication:
+          token:
+            from: serviceAccount
+      # LokiStack gateway serves a service-ca-signed cert; the collector needs
+      # the cluster's service-ca trust bundle to validate it, or vector spins
+      # in an OOM-inducing retry loop on "self-signed certificate" TLS errors.
+      tls:
+        ca:
+          configMapName: openshift-service-ca.crt
+          key: service-ca.crt
+  pipelines:
+    - name: demo-to-loki
+      inputRefs:
+        - demo-app
+        - infrastructure
+      outputRefs:
+        - default-lokistack

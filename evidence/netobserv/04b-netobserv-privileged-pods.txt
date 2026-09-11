@@ -1,0 +1,6 @@
+NAME                         READY   STATUS    RESTARTS   AGE    IP           NODE                NOMINATED NODE   READINESS GATES
+netobserv-ebpf-agent-cjz6w   1/1     Running   0          6m1s   172.16.1.3   24-6e-96-33-24-90   <none>           <none>
+netobserv-ebpf-agent-dv59g   0/1     Pending   0          6m1s   <none>       <none>              <none>           <none>
+netobserv-ebpf-agent-jxrn8   1/1     Running   0          6m1s   172.16.1.2   ec-f4-bb-ed-07-a8   <none>           <none>
+NAME                   DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE    CONTAINERS             IMAGES                                                                                                                                                    SELECTOR
+netobserv-ebpf-agent   3         3         2       3            2           <none>          6m5s   netobserv-ebpf-agent   registry.redhat.io/network-observability/network-observability-ebpf-agent-rhel9@sha256:7b5d966cd245acdd37416a86b656d8b74dd45042be3fa227708c0956d4b72dd1   app=netobserv-ebpf-agent

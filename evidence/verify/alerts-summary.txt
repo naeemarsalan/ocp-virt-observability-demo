@@ -1,0 +1,150 @@
+=== Alertmanager active alerts: VMCannotBeEvicted + OutdatedVirtualMachineInstanceWorkloads rule states ===
+{
+  "annotations": {
+    "description": "Eviction policy for VirtualMachine vm-non-migratable in namespace demo-vms (on node ec-f4-bb-ed-07-a8) is set to Live Migration but the VM is not migratable",
+    "runbook_url": "https://github.com/openshift/runbooks/blob/master/alerts/openshift-virtualization-operator/VMCannotBeEvicted.md",
+    "summary": "The VM's eviction strategy is set to Live Migration but the VM is not migratable"
+  },
+  "endsAt": "2026-09-11T13:43:44.543Z",
+  "fingerprint": "aafcc47b1a3a57c0",
+  "receivers": [
+    {
+      "name": "Default"
+    }
+  ],
+  "startsAt": "2026-09-11T13:24:44.543Z",
+  "status": {
+    "inhibitedBy": [],
+    "mutedBy": [],
+    "silencedBy": [],
+    "state": "active"
+  },
+  "updatedAt": "2026-09-11T13:39:44.564Z",
+  "generatorURL": "https://<cluster-domain>/monitoring/graph?g0.expr=kubevirt_vmi_non_evictable+%2A+on+%28name%2C+namespace%29+group_left+%28%29+kubevirt_vmi_info%7Bphase%3D%22running%22%7D+%3D%3D+1&g0.tab=1",
+  "labels": {
+    "alertname": "VMCannotBeEvicted",
+    "container": "virt-controller",
+    "endpoint": "metrics",
+    "instance": "10.130.0.132:8443",
+    "job": "kubevirt-prometheus-metrics",
+    "kubernetes_operator_component": "kubevirt",
+    "kubernetes_operator_part_of": "kubevirt",
+    "managed_cluster": "dfceb808-7f9a-458f-b678-ceec0973a7f8",
+    "name": "vm-non-migratable",
+    "namespace": "demo-vms",
+    "node": "ec-f4-bb-ed-07-a8",
+    "openshift_io_alert_source": "platform",
+    "operator_health_impact": "none",
+    "pod": "virt-controller-7b86885b64-p4m8c",
+    "prometheus": "openshift-monitoring/k8s",
+    "service": "kubevirt-prometheus-metrics",
+    "severity": "warning"
+  }
+}
+
+=== Prometheus rule engine state (via thanos-querier /api/v1/rules) for both alerts ===
+{
+  "state": "pending",
+  "name": "OutdatedVirtualMachineInstanceWorkloads",
+  "query": "kubevirt_vmi_number_of_outdated != 0",
+  "duration": 86400,
+  "labels": {
+    "kubernetes_operator_component": "kubevirt",
+    "kubernetes_operator_part_of": "kubevirt",
+    "managed_cluster": "dfceb808-7f9a-458f-b678-ceec0973a7f8",
+    "operator_health_impact": "none",
+    "prometheus": "openshift-monitoring/k8s",
+    "severity": "warning"
+  },
+  "annotations": {
+    "runbook_url": "https://github.com/openshift/runbooks/blob/master/alerts/openshift-virtualization-operator/OutdatedVirtualMachineInstanceWorkloads.md",
+    "summary": "Some running VMIs are still active in outdated pods after KubeVirt control plane update has completed."
+  },
+  "alerts": [
+    {
+      "labels": {
+        "alertname": "OutdatedVirtualMachineInstanceWorkloads",
+        "container": "virt-controller",
+        "endpoint": "metrics",
+        "instance": "10.130.0.132:8443",
+        "job": "kubevirt-prometheus-metrics",
+        "kubernetes_operator_component": "kubevirt",
+        "kubernetes_operator_part_of": "kubevirt",
+        "namespace": "openshift-cnv",
+        "operator_health_impact": "none",
+        "pod": "virt-controller-7b86885b64-p4m8c",
+        "service": "kubevirt-prometheus-metrics",
+        "severity": "warning"
+      },
+      "annotations": {
+        "runbook_url": "https://github.com/openshift/runbooks/blob/master/alerts/openshift-virtualization-operator/OutdatedVirtualMachineInstanceWorkloads.md",
+        "summary": "Some running VMIs are still active in outdated pods after KubeVirt control plane update has completed."
+      },
+      "state": "pending",
+      "activeAt": "2026-09-11T13:46:14.543948365Z",
+      "value": "2.1e+01",
+      "partialResponseStrategy": "WARN"
+    }
+  ],
+  "health": "ok",
+  "evaluationTime": 0.000599416,
+  "lastEvaluation": "2026-09-11T13:47:14.563851241Z",
+  "keepFiringFor": 0,
+  "type": "alerting"
+}
+{
+  "state": "firing",
+  "name": "VMCannotBeEvicted",
+  "query": "kubevirt_vmi_non_evictable * on (name, namespace) group_left () kubevirt_vmi_info{phase=\"running\"} == 1",
+  "duration": 60,
+  "labels": {
+    "kubernetes_operator_component": "kubevirt",
+    "kubernetes_operator_part_of": "kubevirt",
+    "managed_cluster": "dfceb808-7f9a-458f-b678-ceec0973a7f8",
+    "operator_health_impact": "none",
+    "prometheus": "openshift-monitoring/k8s",
+    "severity": "warning"
+  },
+  "annotations": {
+    "description": "Eviction policy for VirtualMachine {{ $labels.name }} in namespace {{ $labels.namespace }} (on node {{ $labels.node }}) is set to Live Migration but the VM is not migratable",
+    "runbook_url": "https://github.com/openshift/runbooks/blob/master/alerts/openshift-virtualization-operator/VMCannotBeEvicted.md",
+    "summary": "The VM's eviction strategy is set to Live Migration but the VM is not migratable"
+  },
+  "alerts": [
+    {
+      "labels": {
+        "alertname": "VMCannotBeEvicted",
+        "container": "virt-controller",
+        "endpoint": "metrics",
+        "instance": "10.130.0.132:8443",
+        "job": "kubevirt-prometheus-metrics",
+        "kubernetes_operator_component": "kubevirt",
+        "kubernetes_operator_part_of": "kubevirt",
+        "name": "vm-non-migratable",
+        "namespace": "demo-vms",
+        "node": "ec-f4-bb-ed-07-a8",
+        "operator_health_impact": "none",
+        "pod": "virt-controller-7b86885b64-p4m8c",
+        "service": "kubevirt-prometheus-metrics",
+        "severity": "warning"
+      },
+      "annotations": {
+        "description": "Eviction policy for VirtualMachine vm-non-migratable in namespace demo-vms (on node ec-f4-bb-ed-07-a8) is set to Live Migration but the VM is not migratable",
+        "runbook_url": "https://github.com/openshift/runbooks/blob/master/alerts/openshift-virtualization-operator/VMCannotBeEvicted.md",
+        "summary": "The VM's eviction strategy is set to Live Migration but the VM is not migratable"
+      },
+      "state": "firing",
+      "activeAt": "2026-09-11T13:45:44.543948365Z",
+      "value": "1e+00",
+      "partialResponseStrategy": "WARN"
+    }
+  ],
+  "health": "ok",
+  "evaluationTime": 0.001333659,
+  "lastEvaluation": "2026-09-11T13:47:14.564459547Z",
+  "keepFiringFor": 0,
+  "type": "alerting"
+}
+
+=== kubevirt_vmi_number_of_outdated raw metric ===
+{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"kubevirt_vmi_number_of_outdated","container":"virt-controller","endpoint":"metrics","instance":"10.130.0.132:8443","job":"kubevirt-prometheus-metrics","managed_cluster":"dfceb808-7f9a-458f-b678-ceec0973a7f8","namespace":"openshift-cnv","pod":"virt-controller-7b86885b64-p4m8c","prometheus":"openshift-monitoring/k8s","service":"kubevirt-prometheus-metrics"},"value":[1789134479.999,"21"]}],"analysis":{}}}

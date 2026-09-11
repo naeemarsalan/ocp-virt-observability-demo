@@ -1,0 +1,18 @@
+=== BEFORE migration (from initial commands, tick1 of timeline.csv) ===
+vm-demo nodeName (pre-migration, captured before virtctl migrate ran): ec-f4-bb-ed-07-a8
+source: oc get vmi vm-demo -n demo-vms -o jsonpath='{.status.nodeName}'  -- run before migration
+also confirmed by timeline.csv row 1 (2026-09-11T14:37:46+01:00): vmi_nodeName=ec-f4-bb-ed-07-a8, vmim_phase=Pending
+
+=== AFTER migration (current state, re-queried) ===
+--- oc get vmi -n demo-vms -o wide ---
+NAME                AGE   PHASE     IP             NODENAME            READY   LIVE-MIGRATABLE   PAUSED
+vm-demo             34m   Running   10.130.0.232   24-6e-96-33-24-90   True    True              
+vm-demo-2           32m   Running   10.128.1.48    ec-f4-bb-ed-07-a8   True    True              
+vm-non-migratable   39m   Running   10.128.1.43    ec-f4-bb-ed-07-a8   True    False             
+
+--- oc get vmim -n demo-vms -o wide ---
+NAME                        PHASE       VMI
+kubevirt-migrate-vm-vt94m   Succeeded   vm-demo
+
+--- oc get vmi vm-demo -n demo-vms -o jsonpath nodeName ---
+24-6e-96-33-24-90

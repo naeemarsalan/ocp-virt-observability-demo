@@ -1,0 +1,2 @@
+{"start":{"queries":["alert:alert:{\"alertname\":\"VMCannotBeEvicted\",\"namespace\":\"demo-vms\",\"name\":\"vm-non-migratable\"}"]},
+ "goals":["k8s:VirtualMachineInstance.v1.kubevirt.io","k8s:Pod.v1","log:application","netflow:network","metric:metric","k8s:Node.v1"]}

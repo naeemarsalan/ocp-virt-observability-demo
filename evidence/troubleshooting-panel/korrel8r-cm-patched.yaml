@@ -1,0 +1,40 @@
+apiVersion: v1
+data:
+  korrel8r.yaml: "# Default configuration for deploying Korrel8r as a service in an\
+    \ OpenShift cluster.\n# Store service URLs assume that stores are installed in\
+    \ their default locations.\nstores:\n  - domain: k8s\n  - domain: alert\n    metrics:\
+    \ https://thanos-querier.openshift-monitoring.svc:9091\n    alertmanager: https://alertmanager-main.openshift-monitoring.svc:9094\n\
+    \    certificateAuthority: ./run/secrets/kubernetes.io/serviceaccount/service-ca.crt\n\
+    \  - domain: log\n    lokiStack: https://logging-loki-gateway-http.openshift-logging.svc:8080\n\
+    \    certificateAuthority: ./run/secrets/kubernetes.io/serviceaccount/service-ca.crt\n\
+    \  - domain: metric\n    metric: https://thanos-querier.openshift-monitoring.svc:9091\n\
+    \    certificateAuthority: ./run/secrets/kubernetes.io/serviceaccount/service-ca.crt\n\
+    \  - domain: netflow\n    lokiStack: https://loki-gateway-http.netobserv.svc:8080\n\
+    \    certificateAuthority: ./run/secrets/kubernetes.io/serviceaccount/service-ca.crt\n\
+    \  - domain: trace\n    tempoStack: https://tempo-platform-gateway.openshift-tracing.svc.cluster.local:8080/api/traces/v1/platform/tempo/api/search\n\
+    \    certificateAuthority: ./run/secrets/kubernetes.io/serviceaccount/service-ca.crt\n\
+    \ninclude:\n  - /etc/korrel8r/rules/all.yaml\n\nrules:\n  - name: AlertToVMI\n\
+    \    start: { domain: alert }\n    goal: { domain: k8s, classes: [VirtualMachineInstance.kubevirt.io]\
+    \ }\n    result:\n      query: |-\n        k8s:VirtualMachineInstance.kubevirt.io:{\"\
+    namespace\":\"{{index .Labels \"namespace\" | required}}\",\"name\":\"{{index\
+    \ .Labels \"name\" | required}}\"}\n  - name: VmiToLogs\n    start: { domain:\
+    \ k8s, classes: [VirtualMachineInstance.kubevirt.io] }\n    goal: { domain: log\
+    \ }\n    result:\n      query: |-\n        log:{{logTypeForNamespace .metadata.namespace}}:{\"\
+    namespace\":\"{{.metadata.namespace}}\",\"labels\":{\"kubevirt.io\":\"virt-launcher\"\
+    ,\"vm.kubevirt.io/name\":\"{{.metadata.name}}\"}}\n"
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: korrel8r
+    app.kubernetes.io/managed-by: observability-operator
+    app.kubernetes.io/name: korrel8r
+    app.kubernetes.io/part-of: UIPlugin
+  name: korrel8r
+  namespace: openshift-cluster-observability-operator
+  ownerReferences:
+  - apiVersion: observability.openshift.io/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: UIPlugin
+    name: troubleshooting-panel
+    uid: 1f5e5654-c0a4-4087-b61b-68ad29a2d812

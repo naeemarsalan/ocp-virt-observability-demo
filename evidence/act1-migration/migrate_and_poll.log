@@ -1,0 +1,24 @@
+2026-09-11T14:37:45+01:00 : launching virtctl migrate vm-demo -n demo-vms
+VM vm-demo was scheduled to migrate
+virtctl migrate exit code: 0
+tick=1 ts=2026-09-11T14:37:46+01:00 vmim=kubevirt-migrate-vm-vt94m phase=Pending vmi_phase=Running vmi_node=ec-f4-bb-ed-07-a8
+tick=2 ts=2026-09-11T14:37:52+01:00 vmim=kubevirt-migrate-vm-vt94m phase=Scheduling vmi_phase=Running vmi_node=ec-f4-bb-ed-07-a8
+tick=3 ts=2026-09-11T14:37:59+01:00 vmim=kubevirt-migrate-vm-vt94m phase=PreparingTarget vmi_phase=Running vmi_node=ec-f4-bb-ed-07-a8
+tick=4 ts=2026-09-11T14:38:11+01:00 vmim=kubevirt-migrate-vm-vt94m phase=PreparingTarget vmi_phase=Running vmi_node=ec-f4-bb-ed-07-a8
+tick=5 ts=2026-09-11T14:38:19+01:00 vmim=kubevirt-migrate-vm-vt94m phase=Running vmi_phase=Running vmi_node=ec-f4-bb-ed-07-a8
+tick=6 ts=2026-09-11T14:38:25+01:00 vmim=kubevirt-migrate-vm-vt94m phase=Running vmi_phase=Running vmi_node=ec-f4-bb-ed-07-a8
+tick=7 ts=2026-09-11T14:38:31+01:00 vmim=kubevirt-migrate-vm-vt94m phase=Running vmi_phase=Running vmi_node=24-6e-96-33-24-90
+tick=8 ts=2026-09-11T14:38:36+01:00 vmim=kubevirt-migrate-vm-vt94m phase=Succeeded vmi_phase=Running vmi_node=24-6e-96-33-24-90
+2026-09-11T14:38:41+01:00 : VMIM kubevirt-migrate-vm-vt94m reported Succeeded at tick 8. Starting 30s grace period.
+tick=9 ts=2026-09-11T14:38:44+01:00 vmim=kubevirt-migrate-vm-vt94m phase=Succeeded vmi_phase=Running vmi_node=24-6e-96-33-24-90
+tick=10 ts=2026-09-11T14:38:53+01:00 vmim=kubevirt-migrate-vm-vt94m phase=Succeeded vmi_phase=Running vmi_node=24-6e-96-33-24-90
+tick=11 ts=2026-09-11T14:38:59+01:00 vmim=kubevirt-migrate-vm-vt94m phase=Succeeded vmi_phase=Running vmi_node=24-6e-96-33-24-90
+tick=12 ts=2026-09-11T14:39:08+01:00 vmim=kubevirt-migrate-vm-vt94m phase=Succeeded vmi_phase=Running vmi_node=24-6e-96-33-24-90
+tick=13 ts=2026-09-11T14:39:13+01:00 vmim=kubevirt-migrate-vm-vt94m phase=Succeeded vmi_phase=Running vmi_node=24-6e-96-33-24-90
+tick=14 ts=2026-09-11T14:39:21+01:00 vmim=kubevirt-migrate-vm-vt94m phase=Succeeded vmi_phase=Running vmi_node=24-6e-96-33-24-90
+tick=15 ts=2026-09-11T14:39:27+01:00 vmim=kubevirt-migrate-vm-vt94m phase=Succeeded vmi_phase=Running vmi_node=24-6e-96-33-24-90
+tick=16 ts=2026-09-11T14:39:36+01:00 vmim=kubevirt-migrate-vm-vt94m phase=Succeeded vmi_phase=Running vmi_node=24-6e-96-33-24-90
+tick=17 ts=2026-09-11T14:39:41+01:00 vmim=kubevirt-migrate-vm-vt94m phase=Succeeded vmi_phase=Running vmi_node=24-6e-96-33-24-90
+tick=18 ts=2026-09-11T14:40:04+01:00 vmim=kubevirt-migrate-vm-vt94m phase=Succeeded vmi_phase=Running vmi_node=24-6e-96-33-24-90
+2026-09-11T14:40:08+01:00 : grace period elapsed, stopping poll loop.
+2026-09-11T14:40:08+01:00 : poll loop finished after 18 ticks.

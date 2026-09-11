@@ -1,0 +1,53 @@
+{
+  "group": "alerts.rules",
+  "file": "/etc/prometheus/rules/prometheus-k8s-rulefiles-0/openshift-cnv-prometheus-kubevirt-rules-260fbdb2-ce80-4dd6-9d24-19cc4c0055bc.yaml",
+  "rule": {
+    "state": "pending",
+    "name": "OutdatedVirtualMachineInstanceWorkloads",
+    "query": "kubevirt_vmi_number_of_outdated != 0",
+    "duration": 86400,
+    "labels": {
+      "kubernetes_operator_component": "kubevirt",
+      "kubernetes_operator_part_of": "kubevirt",
+      "managed_cluster": "dfceb808-7f9a-458f-b678-ceec0973a7f8",
+      "operator_health_impact": "none",
+      "prometheus": "openshift-monitoring/k8s",
+      "severity": "warning"
+    },
+    "annotations": {
+      "runbook_url": "https://github.com/openshift/runbooks/blob/master/alerts/openshift-virtualization-operator/OutdatedVirtualMachineInstanceWorkloads.md",
+      "summary": "Some running VMIs are still active in outdated pods after KubeVirt control plane update has completed."
+    },
+    "alerts": [
+      {
+        "labels": {
+          "alertname": "OutdatedVirtualMachineInstanceWorkloads",
+          "container": "virt-controller",
+          "endpoint": "metrics",
+          "instance": "10.130.0.132:8443",
+          "job": "kubevirt-prometheus-metrics",
+          "kubernetes_operator_component": "kubevirt",
+          "kubernetes_operator_part_of": "kubevirt",
+          "namespace": "openshift-cnv",
+          "operator_health_impact": "none",
+          "pod": "virt-controller-7b86885b64-p4m8c",
+          "service": "kubevirt-prometheus-metrics",
+          "severity": "warning"
+        },
+        "annotations": {
+          "runbook_url": "https://github.com/openshift/runbooks/blob/master/alerts/openshift-virtualization-operator/OutdatedVirtualMachineInstanceWorkloads.md",
+          "summary": "Some running VMIs are still active in outdated pods after KubeVirt control plane update has completed."
+        },
+        "state": "pending",
+        "activeAt": "2026-09-11T13:46:14.543948365Z",
+        "value": "2.1e+01",
+        "partialResponseStrategy": "WARN"
+      }
+    ],
+    "health": "ok",
+    "evaluationTime": 0.000598329,
+    "lastEvaluation": "2026-09-11T13:46:44.559630036Z",
+    "keepFiringFor": 0,
+    "type": "alerting"
+  }
+}

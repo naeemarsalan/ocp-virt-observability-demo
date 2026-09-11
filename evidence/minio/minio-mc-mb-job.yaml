@@ -1,0 +1,95 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"batch/v1","kind":"Job","metadata":{"annotations":{},"name":"minio-mc-mb","namespace":"minio-demo"},"spec":{"backoffLimit":3,"template":{"metadata":{"labels":{"app":"minio-mc-mb"}},"spec":{"containers":[{"command":["/bin/sh","-c","set -eu\nmc alias set localminio http://minio.minio-demo.svc:9000 \"$MINIO_ROOT_USER\" \"$MINIO_ROOT_PASSWORD\"\nmc mb --ignore-existing localminio/loki-logging\nmc mb --ignore-existing localminio/loki-netobserv\necho \"--- mc ls localminio ---\"\nmc ls localminio\n"],"env":[{"name":"HOME","value":"/tmp"},{"name":"MINIO_ROOT_USER","valueFrom":{"secretKeyRef":{"key":"MINIO_ROOT_USER","name":"minio-root-credentials"}}},{"name":"MINIO_ROOT_PASSWORD","valueFrom":{"secretKeyRef":{"key":"MINIO_ROOT_PASSWORD","name":"minio-root-credentials"}}}],"image":"quay.io/minio/mc:latest","name":"mc"}],"restartPolicy":"Never"}},"ttlSecondsAfterFinished":3600}}
+  creationTimestamp: "2026-09-11T12:56:30Z"
+  generation: 1
+  labels:
+    app: minio-mc-mb
+    batch.kubernetes.io/controller-uid: 4e1b08d2-5ab4-44a2-baa2-84bdc0da2e5e
+    batch.kubernetes.io/job-name: minio-mc-mb
+    controller-uid: 4e1b08d2-5ab4-44a2-baa2-84bdc0da2e5e
+    job-name: minio-mc-mb
+  name: minio-mc-mb
+  namespace: minio-demo
+  resourceVersion: "1198120818"
+  uid: 4e1b08d2-5ab4-44a2-baa2-84bdc0da2e5e
+spec:
+  backoffLimit: 3
+  completionMode: NonIndexed
+  completions: 1
+  manualSelector: false
+  parallelism: 1
+  podReplacementPolicy: TerminatingOrFailed
+  selector:
+    matchLabels:
+      batch.kubernetes.io/controller-uid: 4e1b08d2-5ab4-44a2-baa2-84bdc0da2e5e
+  suspend: false
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: minio-mc-mb
+        batch.kubernetes.io/controller-uid: 4e1b08d2-5ab4-44a2-baa2-84bdc0da2e5e
+        batch.kubernetes.io/job-name: minio-mc-mb
+        controller-uid: 4e1b08d2-5ab4-44a2-baa2-84bdc0da2e5e
+        job-name: minio-mc-mb
+    spec:
+      containers:
+      - command:
+        - /bin/sh
+        - -c
+        - |
+          set -eu
+          mc alias set localminio http://minio.minio-demo.svc:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+          mc mb --ignore-existing localminio/loki-logging
+          mc mb --ignore-existing localminio/loki-netobserv
+          echo "--- mc ls localminio ---"
+          mc ls localminio
+        env:
+        - name: HOME
+          value: /tmp
+        - name: MINIO_ROOT_USER
+          valueFrom:
+            secretKeyRef:
+              key: MINIO_ROOT_USER
+              name: minio-root-credentials
+        - name: MINIO_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: MINIO_ROOT_PASSWORD
+              name: minio-root-credentials
+        image: quay.io/minio/mc:latest
+        imagePullPolicy: Always
+        name: mc
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Never
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+  ttlSecondsAfterFinished: 3600
+status:
+  completionTime: "2026-09-11T12:56:40Z"
+  conditions:
+  - lastProbeTime: "2026-09-11T12:56:40Z"
+    lastTransitionTime: "2026-09-11T12:56:40Z"
+    message: Reached expected number of succeeded pods
+    reason: CompletionsReached
+    status: "True"
+    type: SuccessCriteriaMet
+  - lastProbeTime: "2026-09-11T12:56:40Z"
+    lastTransitionTime: "2026-09-11T12:56:40Z"
+    message: Reached expected number of succeeded pods
+    reason: CompletionsReached
+    status: "True"
+    type: Complete
+  ready: 0
+  startTime: "2026-09-11T12:56:30Z"
+  succeeded: 1
+  terminating: 0
+  uncountedTerminatedPods: {}

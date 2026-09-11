@@ -1,0 +1,94 @@
+
+== 0. oc login / cluster reachability ==
+  PASS  logged in as anaeem against https://<cluster-domain>:6443
+
+== 1. OpenShift Container Platform version ==
+  cluster version: 4.20.32
+  PASS  matches pinned target 4.20
+
+== 2. OpenShift Virtualization (kubevirt-hyperconverged) ==
+  PASS  OpenShift Virtualization installed in openshift-cnv: kubevirt-hyperconverged-operator.v4.20.24 (phase=Succeeded)
+  WARN  HyperConverged CR Available condition is 'False', not True
+  PASS  HCO preferred API is v1beta1 (served: v1beta1 ) -> use spec.workloadUpdateStrategy; 09-upgrade-beat.yaml matches; scripts auto-detect via hco_patch_wum
+  NOTE  current workloadUpdateMethods: []  (must be [] while the outdated gauge is being staged; restore [LiveMigrate] via act2-07-reset.sh)
+
+== 3. Cluster Observability Operator (COO) ==
+  PASS  COO installed: cluster-observability-operator.v1.5.2
+  PASS  COO >= 1.5 -- Perses dashboards should be GA
+
+== 4. OpenShift Logging 6.x + Loki Operator ==
+  PASS  cluster-logging (OpenShift Logging) installed: cluster-logging.v6.5.2
+  PASS  loki-operator installed: loki-operator.v6.6.1
+
+== 5. Network Observability operator ==
+  PASS  netobserv-operator installed: cert-manager.v1.16.5
+
+== 6. Tempo (optional distributed-tracing beat) ==
+  SKIP  Tempo not requested (TEMPO_ENABLED=false) -- trace domain nodes simply will not render, which is expected, not an error
+
+== 7. UIPlugins (Logging, TroubleshootingPanel, DistributedTracing, Monitoring) ==
+  PASS  UIPlugin CRD present
+  PASS  UIPlugin/logging Available=True
+  PASS  UIPlugin/troubleshooting-panel Available=True
+  PASS  UIPlugin/monitoring Available=True
+  SKIP  UIPlugin/distributed-tracing not found (optional)
+
+== 8. LokiStack readiness ==
+  PASS  LokiStack openshift-logging/logging-loki Ready=True
+  size: 1x.demo
+
+== 9. FlowCollector readiness ==
+  PASS  FlowCollector/cluster Ready=True
+
+== 10. Korrel8r: pod health, image tag, domains, and KubeVirt rules ==
+  PASS  korrel8r pod demo-vms/korrel8r-demo-7596984744-8clbm Running, image=quay.io/korrel8r/korrel8r:0.12.1
+  image tag/version hint: 0.12.1 (KubeVirt quickrules compiled in from v0.12.1+; if this resolves to a digest with no version, check it explicitly, see below)
+  WARN  could not reach korrel8r REST API in-pod (no wget/curl in the image, or a different port/path) -- confirm domains manually: oc port-forward -n demo-vms pod/korrel8r-demo-7596984744-8clbm 8080:8080 && curl localhost:8080/api/v1alpha1/domains
+  WARN  could not confirm the compiled KubeVirt quickrules (VmiToPod, VmiToAlert/VmimToAlert, VmToVmi, VmiToNode) are present in this build. Per the research this pinned image's rule set is NOT listed in COO release notes -- confirm manually before promising the alert -> VMI -> virt-launcher-pod -> logs walk on stage:  oc exec -n demo-vms korrel8r-demo-7596984744-8clbm -- korrel8r list rules 2>/dev/null | grep -i vmi   (exact CLI subcommand may differ by build; if it doesn't exist, use the REST /domains + a live click-through in the console as your source of truth instead)
+
+== 11. User workload monitoring ==
+  PASS  enableUserWorkload: true set in cluster-monitoring-config
+  PASS  7 running pod(s) in openshift-user-workload-monitoring
+
+== 12. schedstats=enable and PSI (psi=1) kernel args ==
+  WARN  no MachineConfig with schedstats=enable found -- kubevirt_vmi_vcpu_wait_seconds_total / vcpu_delay_seconds_total will read zero/stale, and the vCPU Wait Top-Consumers panel will be silently blank (no error)
+  WARN  /proc/schedstat missing or empty on node 24-6e-96-33-24-90 -- the schedstats MachineConfig has probably not rolled out / not rebooted yet on this node
+  NOTE: Pressure Stall Information (psi=1) is documented by Red Hat as available
+  starting OCP 4.21 (developers.redhat.com, 2026-03-18). On the pinned 4.20
+  target, /proc/pressure/cpu will NOT appear regardless of any psi=1
+  MachineConfig you apply -- this is a version gap, not a misconfiguration.
+  Either drop PSI panels from this demo on 4.20, or upgrade the demo cluster
+  to 4.21+ before relying on them.
+  SKIP  /proc/pressure/cpu absent on 24-6e-96-33-24-90 -- expected on OCP < 4.21, not a bug
+
+== 13. Guest agent connectivity on the demo VM ==
+  PASS  VMI demo-vms/vm-demo reports AgentConnected=True
+  PASS  VMI reports LiveMigratable=True
+
+== 14. Prometheus capacity / cardinality headroom ==
+  VMIs cluster-wide: 31   (rule of thumb ~60 kubevirt_vmi_* series/VM -> ~1860 series just from VMI metrics)
+  prometheus pod: prometheus-k8s-0  restarts=0  memory limit=<none set>
+  PASS  Prometheus pod has 0 restarts
+  WARN  Prometheus has no memory limit set -- fine for a small demo, but size explicitly before scaling VM count up for a bigger rehearsal
+  PASS  VMI count is small enough that cardinality is not a concern for this demo
+
+== 15. Live label-existence checks (the label assumptions this deck makes) ==
+  WARN  could not evaluate label 'phase' on {kubevirt_vmi_phase_transition_time_from_creation_seconds_bucket} (query/auth error) -- verify manually before presenting: Phase-transition latency panel
+  WARN  could not evaluate label 'interface' on {kubevirt_vmi_network_receive_bytes_total} (query/auth error) -- verify manually before presenting: Network throughput by interface panel
+  WARN  could not evaluate label 'drive' on {kubevirt_vmi_storage_iops_read_total} (query/auth error) -- verify manually before presenting: Storage IOPS/throughput by drive panel
+  WARN  could not evaluate label 'instance_type' on {kubevirt_vmi_info} (query/auth error) -- verify manually before presenting: VM count by instance type (row E) panel
+  WARN  could not evaluate label 'node' on {kubevirt_vmi_cpu_usage_seconds_total} (query/auth error) -- verify manually before presenting: Top 5 nodes by VM vCPU usage (row E) panel
+
+== 16. kube-state-metrics pod-label allowlist (label_vm_kubevirt_io_name on kube_pod_labels) ==
+  WARN  could not evaluate kube_pod_labels/label_vm_kubevirt_io_name (query/auth error) -- verify manually: curl the label/values endpoint or run the row-A '+ virt-launcher pod series' panel live and confirm it returns a nonzero number distinct from the VMI-only count
+
+== 17. OCP 4.20 cgroups v1->v2 cgroup_id/id rename trap ==
+  PASS  node 24-6e-96-33-24-90 is on cgroups v2 (expected default on 4.20) -- if you add any panel that groups by 'id' or 'cgroup_id' on container_* metrics, verify the label name live before trusting it, per the research's cgroup_id->id rename note
+
+================================================================
+  SUMMARY:  23 PASS   12 WARN   0 FAIL
+  Fix every FAIL before the demo. Read every WARN and decide if
+  it changes what you say on stage -- most WARNs mean a panel or
+  graph node will be silently empty, not throw an error.
+================================================================
+EXIT_CODE=0

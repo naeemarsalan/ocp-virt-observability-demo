@@ -1,0 +1,4 @@
+NAME                     PHASE       PROGRESS   RESTARTS   AGE
+vm-demo-2-rootdisk       Succeeded   100.0%                10m
+vm-demo-rootdisk         Succeeded   100.0%                10m
+vm-non-migratable-disk   Succeeded   100.0%                10m

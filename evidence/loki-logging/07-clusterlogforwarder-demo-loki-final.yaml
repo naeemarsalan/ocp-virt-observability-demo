@@ -1,0 +1,91 @@
+apiVersion: observability.openshift.io/v1
+kind: ClusterLogForwarder
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"observability.openshift.io/v1","kind":"ClusterLogForwarder","metadata":{"annotations":{},"name":"demo-loki","namespace":"openshift-logging"},"spec":{"collector":{"resources":{"limits":{"cpu":"2","memory":"4Gi"},"requests":{"cpu":"500m","memory":"256Mi"}}},"inputs":[{"application":{"includes":[{"namespace":"demo-vms"}]},"name":"demo-app","type":"application"}],"outputs":[{"lokiStack":{"authentication":{"token":{"from":"serviceAccount"}},"target":{"name":"logging-loki","namespace":"openshift-logging"}},"name":"default-lokistack","tls":{"ca":{"configMapName":"openshift-service-ca.crt","key":"service-ca.crt"}},"type":"lokiStack"}],"pipelines":[{"inputRefs":["demo-app","infrastructure"],"name":"demo-to-loki","outputRefs":["default-lokistack"]}],"serviceAccount":{"name":"demo-collector"}}}
+  creationTimestamp: "2026-09-11T13:07:42Z"
+  generation: 3
+  name: demo-loki
+  namespace: openshift-logging
+  resourceVersion: "1198183886"
+  uid: 534e5ec4-fc55-4619-abed-e175208c9237
+spec:
+  collector:
+    resources:
+      limits:
+        cpu: "2"
+        memory: 4Gi
+      requests:
+        cpu: 500m
+        memory: 256Mi
+  inputs:
+  - application:
+      includes:
+      - namespace: demo-vms
+    name: demo-app
+    type: application
+  managementState: Managed
+  outputs:
+  - lokiStack:
+      authentication:
+        token:
+          from: serviceAccount
+      target:
+        name: logging-loki
+        namespace: openshift-logging
+    name: default-lokistack
+    tls:
+      ca:
+        configMapName: openshift-service-ca.crt
+        key: service-ca.crt
+    type: lokiStack
+  pipelines:
+  - inputRefs:
+    - demo-app
+    - infrastructure
+    name: demo-to-loki
+    outputRefs:
+    - default-lokistack
+  serviceAccount:
+    name: demo-collector
+status:
+  conditions:
+  - lastTransitionTime: "2026-09-11T13:07:43Z"
+    message: 'permitted to collect log types: [application infrastructure]'
+    reason: ClusterRolesExist
+    status: "True"
+    type: observability.openshift.io/Authorized
+  - lastTransitionTime: "2026-09-11T13:07:43Z"
+    message: ""
+    reason: ValidationSuccess
+    status: "True"
+    type: observability.openshift.io/Valid
+  - lastTransitionTime: "2026-09-11T13:21:00Z"
+    message: ""
+    reason: ReconciliationComplete
+    status: "True"
+    type: Ready
+  inputConditions:
+  - lastTransitionTime: "2026-09-11T13:07:43Z"
+    message: input "demo-app" is valid
+    reason: ValidationSuccess
+    status: "True"
+    type: observability.openshift.io/ValidInput-demo-app
+  - lastTransitionTime: "2026-09-11T13:26:48Z"
+    message: input "infrastructure" is valid
+    reason: ValidationSuccess
+    status: "True"
+    type: observability.openshift.io/ValidInput-infrastructure
+  outputConditions:
+  - lastTransitionTime: "2026-09-11T13:07:43Z"
+    message: output "default-lokistack" is valid
+    reason: ValidationSuccess
+    status: "True"
+    type: observability.openshift.io/ValidOutput-default-lokistack
+  pipelineConditions:
+  - lastTransitionTime: "2026-09-11T13:07:43Z"
+    message: pipeline "demo-to-loki" is valid
+    reason: ValidationSuccess
+    status: "True"
+    type: observability.openshift.io/ValidPipeline-demo-to-loki

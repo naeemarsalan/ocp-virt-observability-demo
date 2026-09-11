@@ -1,0 +1,16 @@
+NAME                                           READY   STATUS      RESTARTS      AGE     IP             NODE                NOMINATED NODE   READINESS GATES
+cluster-logging-operator-7b879c7c84-5b9hb      1/1     Running     0             23d     10.129.1.187   80-18-44-f0-71-30   <none>           <none>
+demo-loki-2hbn8                                0/1     OOMKilled   1 (26s ago)   54s     10.128.1.50    ec-f4-bb-ed-07-a8   <none>           <none>
+demo-loki-lnmm9                                1/1     Running     0             36s     10.129.1.244   80-18-44-f0-71-30   <none>           <none>
+demo-loki-vhspz                                1/1     Running     0             48s     10.130.0.210   24-6e-96-33-24-90   <none>           <none>
+instance-gmnjz                                 1/1     Running     0             23d     10.130.0.221   24-6e-96-33-24-90   <none>           <none>
+instance-vkqwt                                 1/1     Running     0             23d     10.129.1.188   80-18-44-f0-71-30   <none>           <none>
+instance-xl2kv                                 1/1     Running     0             23d     10.128.0.66    ec-f4-bb-ed-07-a8   <none>           <none>
+logging-loki-compactor-0                       1/1     Running     0             9m46s   10.129.1.240   80-18-44-f0-71-30   <none>           <none>
+logging-loki-distributor-86bc5fc96d-knjcc      1/1     Running     0             9m47s   10.129.1.236   80-18-44-f0-71-30   <none>           <none>
+logging-loki-gateway-b5597695-9xm6c            2/2     Running     0             9m41s   10.130.0.206   24-6e-96-33-24-90   <none>           <none>
+logging-loki-gateway-b5597695-rlgdt            2/2     Running     0             9m41s   10.128.1.40    ec-f4-bb-ed-07-a8   <none>           <none>
+logging-loki-index-gateway-0                   1/1     Running     0             9m45s   10.129.1.241   80-18-44-f0-71-30   <none>           <none>
+logging-loki-ingester-0                        1/1     Running     0             9m47s   10.129.1.237   80-18-44-f0-71-30   <none>           <none>
+logging-loki-querier-f79fb85fd-g8z7v           1/1     Running     0             9m46s   10.129.1.238   80-18-44-f0-71-30   <none>           <none>
+logging-loki-query-frontend-6c945b58df-pvlxc   1/1     Running     0             9m45s   10.129.1.239   80-18-44-f0-71-30   <none>           <none>

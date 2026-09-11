@@ -1,0 +1,1 @@
+{"status":"success","data":{"resultType":"vector","result":[{"metric":{"drive":"cloudinitdisk"},"value":[1789134475.007,"0"]},{"metric":{"drive":"rootdisk"},"value":[1789134475.007,"2123.8518518518517"]}],"analysis":{}}}

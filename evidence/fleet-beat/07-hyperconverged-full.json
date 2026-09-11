@@ -1,0 +1,682 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "hco.kubevirt.io/v1beta1",
+            "kind": "HyperConverged",
+            "metadata": {
+                "annotations": {
+                    "deployOVS": "false"
+                },
+                "creationTimestamp": "2025-08-09T16:08:23Z",
+                "finalizers": [
+                    "kubevirt.io/hyperconverged"
+                ],
+                "generation": 7,
+                "labels": {
+                    "app": "kubevirt-hyperconverged"
+                },
+                "name": "kubevirt-hyperconverged",
+                "namespace": "openshift-cnv",
+                "resourceVersion": "1198225922",
+                "uid": "a923ef17-91dc-4254-9b4f-6ee08ead57d1"
+            },
+            "spec": {
+                "applicationAwareConfig": {
+                    "allowApplicationAwareClusterResourceQuota": false,
+                    "vmiCalcConfigName": "DedicatedVirtualResources"
+                },
+                "certConfig": {
+                    "ca": {
+                        "duration": "48h0m0s",
+                        "renewBefore": "24h0m0s"
+                    },
+                    "server": {
+                        "duration": "24h0m0s",
+                        "renewBefore": "12h0m0s"
+                    }
+                },
+                "defaultCPUModel": "Haswell-noTSX-IBRS",
+                "deployVmConsoleProxy": false,
+                "enableApplicationAwareQuota": false,
+                "enableCommonBootImageImport": true,
+                "evictionStrategy": "LiveMigrate",
+                "featureGates": {
+                    "alignCPUs": false,
+                    "decentralizedLiveMigration": false,
+                    "declarativeHotplugVolumes": false,
+                    "deployKubeSecondaryDNS": false,
+                    "disableMDevConfiguration": false,
+                    "downwardMetrics": false,
+                    "enableMultiArchBootImageImport": false,
+                    "persistentReservation": false
+                },
+                "higherWorkloadDensity": {
+                    "memoryOvercommitPercentage": 100
+                },
+                "infra": {},
+                "liveMigrationConfig": {
+                    "allowAutoConverge": false,
+                    "allowPostCopy": false,
+                    "completionTimeoutPerGiB": 150,
+                    "parallelMigrationsPerCluster": 5,
+                    "parallelOutboundMigrationsPerNode": 2,
+                    "progressTimeout": 150
+                },
+                "logVerbosityConfig": {
+                    "cdi": 6
+                },
+                "resourceRequirements": {
+                    "vmiCPUAllocationRatio": 10
+                },
+                "uninstallStrategy": "BlockUninstallIfWorkloadsExist",
+                "virtualMachineOptions": {
+                    "disableFreePageReporting": false,
+                    "disableSerialConsoleLog": false
+                },
+                "workloadUpdateStrategy": {
+                    "batchEvictionInterval": "10m0s",
+                    "batchEvictionSize": 1,
+                    "workloadUpdateMethods": []
+                },
+                "workloads": {}
+            },
+            "status": {
+                "conditions": [
+                    {
+                        "lastTransitionTime": "2026-08-12T00:50:15Z",
+                        "message": "Reconcile completed successfully",
+                        "observedGeneration": 7,
+                        "reason": "ReconcileCompleted",
+                        "status": "True",
+                        "type": "ReconcileComplete"
+                    },
+                    {
+                        "lastTransitionTime": "2026-09-11T13:46:22Z",
+                        "message": "HCO is not available due to degraded components",
+                        "observedGeneration": 7,
+                        "reason": "HCODegraded",
+                        "status": "False",
+                        "type": "Available"
+                    },
+                    {
+                        "lastTransitionTime": "2026-09-11T13:26:39Z",
+                        "message": "Reconcile completed successfully",
+                        "observedGeneration": 7,
+                        "reason": "ReconcileCompleted",
+                        "status": "False",
+                        "type": "Progressing"
+                    },
+                    {
+                        "lastTransitionTime": "2026-09-11T13:46:22Z",
+                        "message": "MigController is degraded: ",
+                        "observedGeneration": 7,
+                        "reason": "MigControllerDegraded",
+                        "status": "True",
+                        "type": "Degraded"
+                    },
+                    {
+                        "lastTransitionTime": "2026-09-11T13:46:22Z",
+                        "message": "HCO is not Upgradeable due to degraded components",
+                        "observedGeneration": 7,
+                        "reason": "HCODegraded",
+                        "status": "False",
+                        "type": "Upgradeable"
+                    }
+                ],
+                "dataImportCronTemplates": [
+                    {
+                        "metadata": {
+                            "annotations": {
+                                "cdi.kubevirt.io/storage.bind.immediate.requested": "true",
+                                "ssp.kubevirt.io/dict.architectures": "amd64,arm64,s390x"
+                            },
+                            "labels": {
+                                "kubevirt.io/dynamic-credentials-support": "true"
+                            },
+                            "name": "centos-stream10-image-cron"
+                        },
+                        "spec": {
+                            "garbageCollect": "Outdated",
+                            "managedDataSource": "centos-stream10",
+                            "schedule": "34 4/12 * * *",
+                            "template": {
+                                "metadata": {},
+                                "spec": {
+                                    "source": {
+                                        "registry": {
+                                            "pullMethod": "node",
+                                            "url": "docker://quay.io/containerdisks/centos-stream:10"
+                                        }
+                                    },
+                                    "storage": {
+                                        "resources": {
+                                            "requests": {
+                                                "storage": "30Gi"
+                                            }
+                                        }
+                                    }
+                                },
+                                "status": {}
+                            }
+                        },
+                        "status": {
+                            "commonTemplate": true
+                        }
+                    },
+                    {
+                        "metadata": {
+                            "annotations": {
+                                "cdi.kubevirt.io/storage.bind.immediate.requested": "true",
+                                "ssp.kubevirt.io/dict.architectures": "amd64,arm64,s390x"
+                            },
+                            "labels": {
+                                "kubevirt.io/dynamic-credentials-support": "true"
+                            },
+                            "name": "centos-stream9-image-cron"
+                        },
+                        "spec": {
+                            "garbageCollect": "Outdated",
+                            "managedDataSource": "centos-stream9",
+                            "schedule": "34 4/12 * * *",
+                            "template": {
+                                "metadata": {},
+                                "spec": {
+                                    "source": {
+                                        "registry": {
+                                            "pullMethod": "node",
+                                            "url": "docker://quay.io/containerdisks/centos-stream:9"
+                                        }
+                                    },
+                                    "storage": {
+                                        "resources": {
+                                            "requests": {
+                                                "storage": "30Gi"
+                                            }
+                                        }
+                                    }
+                                },
+                                "status": {}
+                            }
+                        },
+                        "status": {
+                            "commonTemplate": true
+                        }
+                    },
+                    {
+                        "metadata": {
+                            "annotations": {
+                                "cdi.kubevirt.io/storage.bind.immediate.requested": "true",
+                                "ssp.kubevirt.io/dict.architectures": "amd64,arm64,s390x"
+                            },
+                            "labels": {
+                                "kubevirt.io/dynamic-credentials-support": "true"
+                            },
+                            "name": "fedora-image-cron"
+                        },
+                        "spec": {
+                            "garbageCollect": "Outdated",
+                            "managedDataSource": "fedora",
+                            "schedule": "34 4/12 * * *",
+                            "template": {
+                                "metadata": {},
+                                "spec": {
+                                    "source": {
+                                        "registry": {
+                                            "pullMethod": "node",
+                                            "url": "docker://quay.io/containerdisks/fedora:latest"
+                                        }
+                                    },
+                                    "storage": {
+                                        "resources": {
+                                            "requests": {
+                                                "storage": "30Gi"
+                                            }
+                                        }
+                                    }
+                                },
+                                "status": {}
+                            }
+                        },
+                        "status": {
+                            "commonTemplate": true
+                        }
+                    },
+                    {
+                        "metadata": {
+                            "annotations": {
+                                "cdi.kubevirt.io/storage.bind.immediate.requested": "true",
+                                "ssp.kubevirt.io/dict.architectures": "amd64,arm64,s390x"
+                            },
+                            "labels": {
+                                "kubevirt.io/dynamic-credentials-support": "true"
+                            },
+                            "name": "rhel10-image-cron"
+                        },
+                        "spec": {
+                            "garbageCollect": "Outdated",
+                            "managedDataSource": "rhel10",
+                            "schedule": "34 4/12 * * *",
+                            "template": {
+                                "metadata": {},
+                                "spec": {
+                                    "source": {
+                                        "registry": {
+                                            "imageStream": "rhel10-guest",
+                                            "pullMethod": "node"
+                                        }
+                                    },
+                                    "storage": {
+                                        "resources": {
+                                            "requests": {
+                                                "storage": "30Gi"
+                                            }
+                                        }
+                                    }
+                                },
+                                "status": {}
+                            }
+                        },
+                        "status": {
+                            "commonTemplate": true
+                        }
+                    },
+                    {
+                        "metadata": {
+                            "annotations": {
+                                "cdi.kubevirt.io/storage.bind.immediate.requested": "true",
+                                "ssp.kubevirt.io/dict.architectures": "amd64,arm64,s390x"
+                            },
+                            "name": "rhel8-image-cron"
+                        },
+                        "spec": {
+                            "garbageCollect": "Outdated",
+                            "managedDataSource": "rhel8",
+                            "schedule": "34 4/12 * * *",
+                            "template": {
+                                "metadata": {},
+                                "spec": {
+                                    "source": {
+                                        "registry": {
+                                            "imageStream": "rhel8-guest",
+                                            "pullMethod": "node"
+                                        }
+                                    },
+                                    "storage": {
+                                        "resources": {
+                                            "requests": {
+                                                "storage": "30Gi"
+                                            }
+                                        }
+                                    }
+                                },
+                                "status": {}
+                            }
+                        },
+                        "status": {
+                            "commonTemplate": true
+                        }
+                    },
+                    {
+                        "metadata": {
+                            "annotations": {
+                                "cdi.kubevirt.io/storage.bind.immediate.requested": "true",
+                                "ssp.kubevirt.io/dict.architectures": "amd64,arm64,s390x"
+                            },
+                            "labels": {
+                                "kubevirt.io/dynamic-credentials-support": "true"
+                            },
+                            "name": "rhel9-image-cron"
+                        },
+                        "spec": {
+                            "garbageCollect": "Outdated",
+                            "managedDataSource": "rhel9",
+                            "schedule": "34 4/12 * * *",
+                            "template": {
+                                "metadata": {},
+                                "spec": {
+                                    "source": {
+                                        "registry": {
+                                            "imageStream": "rhel9-guest",
+                                            "pullMethod": "node"
+                                        }
+                                    },
+                                    "storage": {
+                                        "resources": {
+                                            "requests": {
+                                                "storage": "30Gi"
+                                            }
+                                        }
+                                    }
+                                },
+                                "status": {}
+                            }
+                        },
+                        "status": {
+                            "commonTemplate": true
+                        }
+                    }
+                ],
+                "dataImportSchedule": "34 4/12 * * *",
+                "infrastructureHighlyAvailable": true,
+                "nodeInfo": {
+                    "controlPlaneArchitectures": [
+                        "amd64"
+                    ],
+                    "workloadsArchitectures": [
+                        "amd64"
+                    ]
+                },
+                "observedGeneration": 7,
+                "relatedObjects": [
+                    {
+                        "apiVersion": "monitoring.coreos.com/v1",
+                        "kind": "PrometheusRule",
+                        "name": "kubevirt-hyperconverged-prometheus-rule",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1115427022",
+                        "uid": "bb10fb4e-52bf-4ba8-94e1-ba4eed2fc8f4"
+                    },
+                    {
+                        "apiVersion": "rbac.authorization.k8s.io/v1",
+                        "kind": "Role",
+                        "name": "hyperconverged-cluster-operator-metrics",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1115430506",
+                        "uid": "42eacc65-c33f-4bb2-ae61-373605867f64"
+                    },
+                    {
+                        "apiVersion": "rbac.authorization.k8s.io/v1",
+                        "kind": "RoleBinding",
+                        "name": "hyperconverged-cluster-operator-metrics",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1115430663",
+                        "uid": "17393958-561a-4e71-9e95-bfc362809db0"
+                    },
+                    {
+                        "apiVersion": "v1",
+                        "kind": "Service",
+                        "name": "kubevirt-hyperconverged-operator-metrics",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1115430671",
+                        "uid": "ad48e4e9-7902-4a01-832c-51899e76679a"
+                    },
+                    {
+                        "apiVersion": "v1",
+                        "kind": "Secret",
+                        "name": "hco-bearer-auth",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1198144485",
+                        "uid": "c85ca763-e3ed-4727-8a14-86f28be55d9b"
+                    },
+                    {
+                        "apiVersion": "monitoring.coreos.com/v1",
+                        "kind": "ServiceMonitor",
+                        "name": "kubevirt-hyperconverged-operator-metrics",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1198153491",
+                        "uid": "f05f1ea9-58ab-47d2-90dd-eaa4bd246089"
+                    },
+                    {
+                        "apiVersion": "scheduling.k8s.io/v1",
+                        "kind": "PriorityClass",
+                        "name": "kubevirt-cluster-critical",
+                        "resourceVersion": "1115430771",
+                        "uid": "52a83039-a35c-4743-9971-1910d05766a1"
+                    },
+                    {
+                        "apiVersion": "kubevirt.io/v1",
+                        "kind": "KubeVirt",
+                        "name": "kubevirt-kubevirt-hyperconverged",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1196761780",
+                        "uid": "c6504129-d096-4e3d-9e4f-3efb956662d2"
+                    },
+                    {
+                        "apiVersion": "cdi.kubevirt.io/v1beta1",
+                        "kind": "CDI",
+                        "name": "cdi-kubevirt-hyperconverged",
+                        "resourceVersion": "1198187912",
+                        "uid": "a6ff6d90-e7e4-4675-9a7a-f01652b85f1d"
+                    },
+                    {
+                        "apiVersion": "networkaddonsoperator.network.kubevirt.io/v1",
+                        "kind": "NetworkAddonsConfig",
+                        "name": "cluster",
+                        "resourceVersion": "1198183415",
+                        "uid": "25ae7900-8630-466c-8909-ab26e206b19b"
+                    },
+                    {
+                        "apiVersion": "console.openshift.io/v1",
+                        "kind": "ConsoleCLIDownload",
+                        "name": "virtctl-clidownloads-kubevirt-hyperconverged",
+                        "resourceVersion": "1115431168",
+                        "uid": "8be76713-0b06-4ccb-827c-f605c9cee715"
+                    },
+                    {
+                        "apiVersion": "route.openshift.io/v1",
+                        "kind": "Route",
+                        "name": "hyperconverged-cluster-cli-download",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1115431197",
+                        "uid": "229345ba-d88f-4c63-a6bb-be76764cc5c7"
+                    },
+                    {
+                        "apiVersion": "v1",
+                        "kind": "Service",
+                        "name": "hyperconverged-cluster-cli-download",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1115431218",
+                        "uid": "aa19f30e-ceca-46c0-b2df-87e5280e9f8d"
+                    },
+                    {
+                        "apiVersion": "v1",
+                        "kind": "Service",
+                        "name": "kubevirt-console-plugin-service",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1115431253",
+                        "uid": "4d626909-0b3d-44c4-905f-31fc86f22867"
+                    },
+                    {
+                        "apiVersion": "v1",
+                        "kind": "Service",
+                        "name": "kubevirt-apiserver-proxy-service",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1115431254",
+                        "uid": "fe54c3e9-fc0b-476c-a3c5-058d2e25dc1e"
+                    },
+                    {
+                        "apiVersion": "console.openshift.io/v1",
+                        "kind": "ConsoleQuickStart",
+                        "name": "windows-bootsource-pipeline",
+                        "resourceVersion": "1115431985",
+                        "uid": "8d1213d6-f797-457a-866e-774a9f1e44e7"
+                    },
+                    {
+                        "apiVersion": "console.openshift.io/v1",
+                        "kind": "ConsoleQuickStart",
+                        "name": "creating-virtual-machine",
+                        "resourceVersion": "1115431987",
+                        "uid": "b40c4b28-518c-4e4f-96b5-b6e3bdf76aa5"
+                    },
+                    {
+                        "apiVersion": "console.openshift.io/v1",
+                        "kind": "ConsoleQuickStart",
+                        "name": "creating-virtual-machine-from-volume",
+                        "resourceVersion": "1115431988",
+                        "uid": "1a0f7438-3029-4644-a022-393812fb1874"
+                    },
+                    {
+                        "apiVersion": "console.openshift.io/v1",
+                        "kind": "ConsoleQuickStart",
+                        "name": "upload-boot-source",
+                        "resourceVersion": "1115432000",
+                        "uid": "8bb1bdfd-5067-4b98-bafe-509aaa593827"
+                    },
+                    {
+                        "apiVersion": "v1",
+                        "kind": "ConfigMap",
+                        "name": "grafana-dashboard-kubevirt-top-consumers",
+                        "namespace": "openshift-config-managed",
+                        "resourceVersion": "1115432023",
+                        "uid": "501db4d8-6014-4bdf-8060-f4acc4da5c6f"
+                    },
+                    {
+                        "apiVersion": "image.openshift.io/v1",
+                        "kind": "ImageStream",
+                        "name": "rhel10-guest",
+                        "namespace": "openshift-virtualization-os-images",
+                        "resourceVersion": "1172655930",
+                        "uid": "8ef23dc9-9b54-4399-8a8c-0c5841b014eb"
+                    },
+                    {
+                        "apiVersion": "image.openshift.io/v1",
+                        "kind": "ImageStream",
+                        "name": "rhel8-guest",
+                        "namespace": "openshift-virtualization-os-images",
+                        "resourceVersion": "1161260455",
+                        "uid": "3589d2a0-2169-4a31-8d14-ffdf945d4c95"
+                    },
+                    {
+                        "apiVersion": "image.openshift.io/v1",
+                        "kind": "ImageStream",
+                        "name": "rhel9-guest",
+                        "namespace": "openshift-virtualization-os-images",
+                        "resourceVersion": "1175982933",
+                        "uid": "f0106f1d-b4d6-4cb5-a495-3e67b3244d8c"
+                    },
+                    {
+                        "apiVersion": "v1",
+                        "kind": "ConfigMap",
+                        "name": "virtio-win",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1115432047",
+                        "uid": "f5df010d-3242-4e83-a67b-e9749ad44627"
+                    },
+                    {
+                        "apiVersion": "rbac.authorization.k8s.io/v1",
+                        "kind": "Role",
+                        "name": "virtio-win",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1115432507",
+                        "uid": "21999f3e-6b9d-4ac3-a560-f5300136d173"
+                    },
+                    {
+                        "apiVersion": "rbac.authorization.k8s.io/v1",
+                        "kind": "RoleBinding",
+                        "name": "virtio-win",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1115432940",
+                        "uid": "85d77f22-d2dc-4a32-bf56-30b97bcd0a92"
+                    },
+                    {
+                        "apiVersion": "apps/v1",
+                        "kind": "Deployment",
+                        "name": "kubevirt-console-plugin",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1183127871",
+                        "uid": "e16b7147-b654-4319-bab6-b83f52d65f5a"
+                    },
+                    {
+                        "apiVersion": "apps/v1",
+                        "kind": "Deployment",
+                        "name": "kubevirt-apiserver-proxy",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1183128608",
+                        "uid": "a94d3d6c-d5cf-4799-a16e-6c3fe2aba8f4"
+                    },
+                    {
+                        "apiVersion": "v1",
+                        "kind": "ConfigMap",
+                        "name": "nginx-conf",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1115433029",
+                        "uid": "c7eadcbf-4875-4e52-82d2-863ead41e962"
+                    },
+                    {
+                        "apiVersion": "console.openshift.io/v1",
+                        "kind": "ConsolePlugin",
+                        "name": "kubevirt-plugin",
+                        "resourceVersion": "1115433033",
+                        "uid": "5062555c-cfc8-4697-87da-0dcad2fd5144"
+                    },
+                    {
+                        "apiVersion": "v1",
+                        "kind": "ConfigMap",
+                        "name": "kubevirt-user-settings",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1115433035",
+                        "uid": "3c2a3f04-90a4-4284-89c7-e303bcee7a5c"
+                    },
+                    {
+                        "apiVersion": "v1",
+                        "kind": "ConfigMap",
+                        "name": "kubevirt-ui-features",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1115433051",
+                        "uid": "b96a2c2e-9f5f-427a-8f4e-29e82170eb8b"
+                    },
+                    {
+                        "apiVersion": "rbac.authorization.k8s.io/v1",
+                        "kind": "Role",
+                        "name": "kubevirt-ui-config-reader",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1115433760",
+                        "uid": "35e0708f-8211-41ac-8b15-bc5412b6b762"
+                    },
+                    {
+                        "apiVersion": "rbac.authorization.k8s.io/v1",
+                        "kind": "RoleBinding",
+                        "name": "kubevirt-ui-config-reader-rolebinding",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1115434647",
+                        "uid": "889e8b2b-b56b-4726-a8ca-e0648f9ecbb3"
+                    },
+                    {
+                        "apiVersion": "ssp.kubevirt.io/v1beta3",
+                        "kind": "SSP",
+                        "name": "ssp-kubevirt-hyperconverged",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1198224756",
+                        "uid": "4bfde5cb-75d1-4063-9187-afacf9f5b239"
+                    },
+                    {
+                        "apiVersion": "migrations.kubevirt.io/v1alpha1",
+                        "kind": "MigController",
+                        "name": "migcontroller-kubevirt-hyperconverged",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1198224304",
+                        "uid": "1341bc77-1a8a-46f8-94cf-0a164dba14dc"
+                    },
+                    {
+                        "apiVersion": "networking.k8s.io/v1",
+                        "kind": "NetworkPolicy",
+                        "name": "kubevirt-console-plugin-np",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1115434657",
+                        "uid": "fcd6063c-1022-4371-9ece-5e0bd1c55d0b"
+                    },
+                    {
+                        "apiVersion": "networking.k8s.io/v1",
+                        "kind": "NetworkPolicy",
+                        "name": "kubevirt-apiserver-proxy-np",
+                        "namespace": "openshift-cnv",
+                        "resourceVersion": "1115434659",
+                        "uid": "7684d8d9-0bba-466b-9166-3db1fb32f510"
+                    }
+                ],
+                "systemHealthStatus": "error",
+                "versions": [
+                    {
+                        "name": "operator",
+                        "version": "4.20.24"
+                    }
+                ]
+            }
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": ""
+    }
+}

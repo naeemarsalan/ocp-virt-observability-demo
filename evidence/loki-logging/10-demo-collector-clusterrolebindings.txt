@@ -1,0 +1,6 @@
+demo-collector-cluster-logging-application-view                                                   ClusterRole/cluster-logging-application-view                                                                  2m43s
+demo-collector-cluster-logging-infrastructure-view                                                ClusterRole/cluster-logging-infrastructure-view                                                               2m42s
+demo-collector-collect-application-logs                                                           ClusterRole/collect-application-logs                                                                          19m
+demo-collector-collect-infrastructure-logs                                                        ClusterRole/collect-infrastructure-logs                                                                       19m
+demo-collector-logging-collector-logs-writer                                                      ClusterRole/logging-collector-logs-writer                                                                     19m
+metadata-reader-openshift-logging-demo-collector                                                  ClusterRole/metadata-reader                                                                                   19m

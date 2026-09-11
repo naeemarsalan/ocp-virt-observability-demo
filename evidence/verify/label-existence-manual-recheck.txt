@@ -1,0 +1,18 @@
+Manual re-verification of preflight.sh section 15/16 label-existence checks.
+Root cause of the script's 'query/auth error' WARNs: label_exists() uses curl --data-urlencode without -G,
+which makes curl issue a POST to /api/v1/label/<name>/values. The thanos-querier route returns 405 Method
+Not Allowed for POST on that endpoint (GET-only). This is a script bug, not a real data-availability problem.
+Direct GET queries below confirm every label has live values on this cluster.
+
+=== phase ===
+{"status":"success","data":["Running","Scheduled","Scheduling","Succeeded"]}
+=== interface ===
+{"status":"success","data":["default","net-200","net200","nic-amaranth-anaconda-76","nic-beige-python-13","nic-blush-rodent-15","nic-blush-shrimp-35","nic-coffee-fly-40","nic-fuchsia-stingray-13","nic-green-eagle-10","nic-green-scorpion-63"]}
+=== drive ===
+{"status":"success","data":["cloudinit","cloudinitdisk","datavolume","disk-amethyst-ladybug-43","root","rootdisk"]}
+=== instance_type ===
+{"status":"success","data":["u1.2xlarge","u1.2xmedium","u1.4xlarge","u1.large","u1.medium","u1.small","u1.xlarge"]}
+=== node ===
+{"status":"success","data":["24-6e-96-33-24-90","80-18-44-f0-71-30","ec-f4-bb-ed-07-a8"]}
+=== label_vm_kubevirt_io_name on kube_pod_labels (includes vm-demo, vm-demo-2, vm-non-migratable) ===
+{"status":"success","data":["ao-test-vm","asaran","edb03","edb04","edb05","edb06","edb1","edb2","fedora-default-test","fedora-plum-scorpion-27","hammer-rhel9","hammer-sno","hammer2-sno","harbour","mail-server","mailcow","mediastack","ocp-dev-master-0","ocp-dev-master-1","ocp-dev-master-2","ocp-dev-worker-0","ocp-dev-worker-1","posthog","rhel8-peach-planarian-76","rhel8-pink-goose-31","rhel9-brown-nightingale-57","rhel9-plum-woodpecker-63","sat","shannon-2","vm-demo","vm-demo-2","vm-non-migratable"]}

@@ -1,0 +1,51 @@
+schedstats enablement run - 2026-09-11T12:52:21Z
+cluster: https://<cluster-domain>:6443
+user: anaeem
+
+=== node/24-6e-96-33-24-90 ===
+-- BEFORE (kernel.sched_schedstats) --
+0
+-- SET (sysctl -w kernel.sched_schedstats=1) --
+kernel.sched_schedstats = 1
+-- AFTER (kernel.sched_schedstats) --
+1
+RESULT: node=node/24-6e-96-33-24-90 before='0' after='1' set_rc=0 after_rc=0
+
+=== node/80-18-44-f0-71-30 ===
+-- BEFORE (kernel.sched_schedstats) --
+0
+-- SET (sysctl -w kernel.sched_schedstats=1) --
+kernel.sched_schedstats = 1
+-- AFTER (kernel.sched_schedstats) --
+1
+RESULT: node=node/80-18-44-f0-71-30 before='0' after='1' set_rc=0 after_rc=0
+
+=== node/ec-f4-bb-ed-07-a8 ===
+-- BEFORE (kernel.sched_schedstats) --
+0
+-- SET (sysctl -w kernel.sched_schedstats=1) --
+kernel.sched_schedstats = 1
+-- AFTER (kernel.sched_schedstats) --
+1
+RESULT: node=node/ec-f4-bb-ed-07-a8 before='0' after='1' set_rc=0 after_rc=0
+
+=== SUMMARY ===
+All 3 nodes: kernel.sched_schedstats set to 1 (before=0, after=1) at runtime via `oc debug <node> -q -- chroot /host sysctl -w kernel.sched_schedstats=1`.
+node/24-6e-96-33-24-90 : PASS
+node/80-18-44-f0-71-30 : PASS
+node/ec-f4-bb-ed-07-a8  : PASS
+
+NOTE: This change is NON-PERSISTENT. It was applied at runtime via `sysctl -w` inside a debug
+pod chrooted to /host on each node's live root filesystem. A node reboot will revert
+kernel.sched_schedstats to its default (0), because no MachineConfig was applied.
+
+The persistent path (deliberately NOT applied on this shared cluster) is:
+  /home/anaeem/virt-monitorong/demo/assets/manifests/01-machineconfig-schedstats-psi.yaml
+which would set this via a MachineConfig (kernel argument / sysctl.d drop-in), but that requires
+a node reboot/drain via the Machine Config Operator and was explicitly avoided here per the
+HARD GUARDRAILS (no MachineConfig, no reboot, no node drain on this shared lab cluster).
+
+Effect: with kernel.sched_schedstats=1 live on all 3 worker nodes, the kernel now populates
+scheduler delay accounting, which kubevirt/virt-handler and node_exporter/cAdvisor style
+collectors read to expose kubevirt_vmi_vcpu_wait_seconds_total and vcpu_delay_seconds_total
+metrics for running VMIs. These should begin populating going forward until next reboot.

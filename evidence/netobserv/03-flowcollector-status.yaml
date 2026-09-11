@@ -1,0 +1,314 @@
+apiVersion: flows.netobserv.io/v1beta2
+kind: FlowCollector
+metadata:
+  annotations:
+    flows.netobserv.io/flowcollectorcontroller-namespace: netobserv
+    flows.netobserv.io/flpparent-namespace: netobserv
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"flows.netobserv.io/v1beta2","kind":"FlowCollector","metadata":{"annotations":{},"name":"cluster"},"spec":{"agent":{"ebpf":{"privileged":false,"sampling":50},"type":"eBPF"},"consolePlugin":{"enable":true},"deploymentModel":"Direct","loki":{"enable":true,"lokiStack":{"name":"loki","namespace":"netobserv"},"mode":"LokiStack"},"namespace":"netobserv","processor":{"logTypes":"Flows"}}}
+  creationTimestamp: "2026-09-11T13:22:46Z"
+  generation: 2
+  name: cluster
+  resourceVersion: "1198187977"
+  uid: 78f3d99e-5c38-43a6-9f86-a91ab12de6b4
+spec:
+  agent:
+    ebpf:
+      cacheActiveTimeout: 15s
+      cacheMaxFlows: 120000
+      excludeInterfaces:
+      - lo
+      imagePullPolicy: IfNotPresent
+      kafkaBatchSize: 1048576
+      logLevel: info
+      metrics:
+        server:
+          tls:
+            insecureSkipVerify: false
+            type: Disabled
+      resources:
+        limits:
+          memory: 800Mi
+        requests:
+          cpu: 100m
+          memory: 50Mi
+      sampling: 50
+    ipfix:
+      cacheActiveTimeout: 20s
+      cacheMaxFlows: 400
+      clusterNetworkOperator:
+        namespace: openshift-network-operator
+      forceSampleAll: false
+      ovnKubernetes:
+        containerName: ovnkube-node
+        daemonSetName: ovnkube-node
+        namespace: ovn-kubernetes
+      sampling: 400
+    type: eBPF
+  consolePlugin:
+    autoscaler:
+      maxReplicas: 0
+      status: Disabled
+    enable: true
+    imagePullPolicy: IfNotPresent
+    logLevel: info
+    portNaming:
+      enable: true
+    quickFilters:
+    - default: true
+      filter:
+        flow_layer: '"app"'
+      name: Applications
+    - filter:
+        flow_layer: '"infra"'
+      name: Infrastructure
+    - default: true
+      filter:
+        dst_kind: '"Pod"'
+        src_kind: '"Pod"'
+      name: Pods network
+    - filter:
+        dst_kind: '"Service"'
+      name: Services network
+    - filter:
+        src_subnet_label: '"",EXT:'
+      name: External ingress
+    - filter:
+        dst_subnet_label: '"",EXT:'
+      name: External egress
+    replicas: 1
+    resources:
+      limits:
+        memory: 100Mi
+      requests:
+        cpu: 100m
+        memory: 50Mi
+  deploymentModel: Direct
+  execution:
+    mode: ""
+  kafka:
+    address: ""
+    compression: none
+    sasl:
+      clientIDReference:
+        namespace: ""
+      clientSecretReference:
+        namespace: ""
+      type: Disabled
+    tls:
+      caCert:
+        namespace: ""
+      enable: false
+      insecureSkipVerify: false
+      userCert:
+        namespace: ""
+    topic: ""
+  loki:
+    enable: true
+    lokiStack:
+      name: loki
+      namespace: netobserv
+    manual:
+      authToken: Disabled
+      ingesterUrl: http://loki:3100/
+      querierUrl: http://loki:3100/
+      statusTls:
+        caCert:
+          namespace: ""
+        enable: false
+        insecureSkipVerify: false
+        userCert:
+          namespace: ""
+      tenantID: netobserv
+      tls:
+        caCert:
+          namespace: ""
+        enable: false
+        insecureSkipVerify: false
+        userCert:
+          namespace: ""
+    microservices:
+      ingesterUrl: http://loki-distributor:3100/
+      querierUrl: http://loki-query-frontend:3100/
+      tenantID: netobserv
+      tls:
+        caCert:
+          namespace: ""
+        enable: false
+        insecureSkipVerify: false
+        userCert:
+          namespace: ""
+    mode: LokiStack
+    monolithic:
+      installDemoLoki: false
+      tenantID: netobserv
+      tls:
+        caCert:
+          namespace: ""
+        enable: false
+        insecureSkipVerify: false
+        userCert:
+          namespace: ""
+      url: http://loki:3100/
+    readTimeout: 30s
+    writeBatchSize: 10485760
+    writeBatchWait: 1s
+    writeTimeout: 10s
+  namespace: netobserv
+  networkPolicy: {}
+  processor:
+    clusterName: ""
+    imagePullPolicy: IfNotPresent
+    kafkaConsumerAutoscaler:
+      maxReplicas: 0
+      status: Disabled
+    kafkaConsumerBatchSize: 10485760
+    kafkaConsumerQueueCapacity: 1000
+    kafkaConsumerReplicas: 3
+    logLevel: info
+    logTypes: Flows
+    metrics:
+      server:
+        tls:
+          insecureSkipVerify: false
+          type: Disabled
+    multiClusterDeployment: false
+    resources:
+      limits:
+        memory: 800Mi
+      requests:
+        cpu: 100m
+        memory: 100Mi
+    subnetLabels: {}
+  prometheus:
+    querier:
+      enable: true
+      manual:
+        forwardUserToken: false
+        tls:
+          caCert:
+            namespace: ""
+          enable: false
+          insecureSkipVerify: false
+          userCert:
+            namespace: ""
+        url: http://prometheus:9090
+      mode: Auto
+      timeout: 30s
+status:
+  components:
+    agent:
+      desiredReplicas: 3
+      message: '1 PendingScheduling (netobserv-ebpf-agent-dv59g): 0/3 nodes are available:
+        1 Too many pods, 2 node(s) didn''t satisfy plugin(s) [NodeAffinity]. preemption:
+        0/3 nodes are available: 1 No preemption victims found for incoming pod, 2
+        Preemption is not he...'
+      podIssues: '1 PendingScheduling (netobserv-ebpf-agent-dv59g): 0/3 nodes are
+        available: 1 Too many pods, 2 node(s) didn''t satisfy plugin(s) [NodeAffinity].
+        preemption: 0/3 nodes are available: 1 No preemption victims found for incoming
+        pod, 2 Preemption is not he...'
+      readyReplicas: 2
+      reason: UnhealthyPods
+      state: Degraded
+      unhealthyPodCount: 1
+    plugin:
+      desiredReplicas: 1
+      readyReplicas: 1
+      state: Ready
+    processor:
+      desiredReplicas: 3
+      message: '1 PendingScheduling (flowlogs-pipeline-7zr98): 0/3 nodes are available:
+        1 Too many pods, 2 node(s) didn''t satisfy plugin(s) [NodeAffinity]. preemption:
+        0/3 nodes are available: 1 No preemption victims found for incoming pod, 2
+        Preemption is not he...'
+      podIssues: '1 PendingScheduling (flowlogs-pipeline-7zr98): 0/3 nodes are available:
+        1 Too many pods, 2 node(s) didn''t satisfy plugin(s) [NodeAffinity]. preemption:
+        0/3 nodes are available: 1 No preemption victims found for incoming pod, 2
+        Preemption is not he...'
+      readyReplicas: 2
+      reason: UnhealthyPods
+      state: Degraded
+      unhealthyPodCount: 1
+  conditions:
+  - lastTransitionTime: "2026-09-11T13:28:26Z"
+    message: 6 ready components, 0 with failure, 0 pending, 3 degraded
+    reason: Ready,Degraded
+    status: "True"
+    type: Ready
+  - lastTransitionTime: "2026-09-11T13:28:32Z"
+    message: ""
+    reason: Ready
+    status: "False"
+    type: WaitingWebConsole
+  - lastTransitionTime: "2026-09-11T13:28:26Z"
+    message: ""
+    reason: Ready
+    status: "False"
+    type: WaitingFlowCollectorController
+  - lastTransitionTime: "2026-09-11T13:28:31Z"
+    message: ""
+    reason: Ready
+    status: "False"
+    type: WaitingFLPParent
+  - lastTransitionTime: "2026-09-11T13:25:49Z"
+    message: ""
+    reason: Ready
+    status: "False"
+    type: WaitingStaticController
+  - lastTransitionTime: "2026-09-11T13:25:49Z"
+    message: ""
+    reason: Ready
+    status: "False"
+    type: WaitingNetworkPolicy
+  - lastTransitionTime: "2026-09-11T13:25:44Z"
+    message: 'LokiStack has warnings [name: loki, namespace: netobserv]: Warning:
+      The ingester replicas (1) are less than or equal to the replication factor (1).
+      Which causes log ingestion to stop when ingester pods get restarted.'
+    reason: LokiStackWarnings
+    status: "True"
+    type: WaitingLokiStack
+  - lastTransitionTime: "2026-09-11T13:28:26Z"
+    message: ""
+    reason: Ready
+    status: "False"
+    type: WaitingMonitoring
+  - lastTransitionTime: "2026-09-11T13:25:49Z"
+    message: ""
+    reason: Valid
+    status: "False"
+    type: ConfigurationIssue
+  - lastTransitionTime: "2026-09-11T13:25:48Z"
+    message: '1 PendingScheduling (netobserv-ebpf-agent-dv59g): 0/3 nodes are available:
+      1 Too many pods, 2 node(s) didn''t satisfy plugin(s) [NodeAffinity]. preemption:
+      0/3 nodes are available: 1 No preemption victims found for incoming pod, 2 Preemption
+      is not he...'
+    reason: UnhealthyPods
+    status: "True"
+    type: WaitingEBPFAgents
+  - lastTransitionTime: "2026-09-11T13:28:31Z"
+    message: '1 PendingScheduling (flowlogs-pipeline-7zr98): 0/3 nodes are available:
+      1 Too many pods, 2 node(s) didn''t satisfy plugin(s) [NodeAffinity]. preemption:
+      0/3 nodes are available: 1 No preemption victims found for incoming pod, 2 Preemption
+      is not he...'
+    reason: UnhealthyPods
+    status: "True"
+    type: WaitingFLPMonolith
+  - lastTransitionTime: "2026-09-11T13:22:49Z"
+    message: Transformer only used with Kafka
+    reason: ComponentUnused
+    status: Unknown
+    type: WaitingFLPTransformer
+  - lastTransitionTime: "2026-09-11T13:28:26Z"
+    message: Demo mode not enabled
+    reason: ComponentUnused
+    status: Unknown
+    type: WaitingDemoLoki
+  integrations:
+    loki:
+      message: 'LokiStack has warnings [name: loki, namespace: netobserv]: Warning:
+        The ingester replicas (1) are less than or equal to the replication factor
+        (1). Which causes log ingestion to stop when ingester pods get restarted.'
+      reason: LokiStackWarnings
+      state: Degraded
+    monitoring:
+      state: Ready

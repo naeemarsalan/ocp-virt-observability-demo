@@ -1,0 +1,4 @@
+NAME                AGE     PHASE     IP            NODENAME            READY   LIVE-MIGRATABLE   PAUSED
+vm-demo             3m35s   Running   10.128.1.49   ec-f4-bb-ed-07-a8   True    True              
+vm-demo-2           2m22s   Running   10.128.1.48   ec-f4-bb-ed-07-a8   True    True              
+vm-non-migratable   9m2s    Running   10.128.1.43   ec-f4-bb-ed-07-a8   True    False             

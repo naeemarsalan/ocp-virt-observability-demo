@@ -1,0 +1,16 @@
+apiVersion: v1
+imagePullSecrets:
+- name: demo-collector-dockercfg-nr6cl
+kind: ServiceAccount
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","kind":"ServiceAccount","metadata":{"annotations":{},"name":"demo-collector","namespace":"openshift-logging"}}
+    openshift.io/internal-registry-pull-secret-ref: demo-collector-dockercfg-nr6cl
+  creationTimestamp: "2026-09-11T13:07:40Z"
+  name: demo-collector
+  namespace: openshift-logging
+  resourceVersion: "1198143116"
+  uid: 227ae3e5-b71c-4100-a205-43bcaefe0f11
+secrets:
+- name: demo-collector-dockercfg-nr6cl

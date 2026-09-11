@@ -1,0 +1,16 @@
+LAST SEEN   TYPE      REASON             OBJECT                           MESSAGE
+6m29s       Normal    Scheduled          pod/netobserv-ebpf-agent-cjz6w   Successfully assigned netobserv-privileged/netobserv-ebpf-agent-cjz6w to 24-6e-96-33-24-90
+6m28s       Warning   FailedScheduling   pod/netobserv-ebpf-agent-dv59g   0/3 nodes are available: 1 Too many pods, 2 node(s) didn't satisfy plugin(s) [NodeAffinity]. preemption: 0/3 nodes are available: 1 No preemption victims found for incoming pod, 2 Preemption is not helpful for scheduling.
+6m18s       Warning   FailedScheduling   pod/netobserv-ebpf-agent-dv59g   0/3 nodes are available: 1 Too many pods, 2 node(s) didn't satisfy plugin(s) [NodeAffinity]. preemption: 0/3 nodes are available: 1 No preemption victims found for incoming pod, 2 Preemption is not helpful for scheduling.
+6m28s       Normal    Scheduled          pod/netobserv-ebpf-agent-jxrn8   Successfully assigned netobserv-privileged/netobserv-ebpf-agent-jxrn8 to ec-f4-bb-ed-07-a8
+6m29s       Normal    SuccessfulCreate   daemonset/netobserv-ebpf-agent   Created pod: netobserv-ebpf-agent-dv59g
+6m29s       Normal    SuccessfulCreate   daemonset/netobserv-ebpf-agent   Created pod: netobserv-ebpf-agent-cjz6w
+6m28s       Normal    Pulling            pod/netobserv-ebpf-agent-cjz6w   Pulling image "registry.redhat.io/network-observability/network-observability-ebpf-agent-rhel9@sha256:7b5d966cd245acdd37416a86b656d8b74dd45042be3fa227708c0956d4b72dd1"
+6m28s       Normal    SuccessfulCreate   daemonset/netobserv-ebpf-agent   Created pod: netobserv-ebpf-agent-jxrn8
+6m26s       Normal    Pulling            pod/netobserv-ebpf-agent-jxrn8   Pulling image "registry.redhat.io/network-observability/network-observability-ebpf-agent-rhel9@sha256:7b5d966cd245acdd37416a86b656d8b74dd45042be3fa227708c0956d4b72dd1"
+6m17s       Normal    Pulled             pod/netobserv-ebpf-agent-jxrn8   Successfully pulled image "registry.redhat.io/network-observability/network-observability-ebpf-agent-rhel9@sha256:7b5d966cd245acdd37416a86b656d8b74dd45042be3fa227708c0956d4b72dd1" in 8.581s (8.581s including waiting). Image size: 210205957 bytes.
+6m17s       Normal    Created            pod/netobserv-ebpf-agent-jxrn8   Created container: netobserv-ebpf-agent
+6m17s       Normal    Started            pod/netobserv-ebpf-agent-jxrn8   Started container netobserv-ebpf-agent
+6m2s        Normal    Pulled             pod/netobserv-ebpf-agent-cjz6w   Successfully pulled image "registry.redhat.io/network-observability/network-observability-ebpf-agent-rhel9@sha256:7b5d966cd245acdd37416a86b656d8b74dd45042be3fa227708c0956d4b72dd1" in 26.107s (26.107s including waiting). Image size: 210205957 bytes.
+6m1s        Normal    Started            pod/netobserv-ebpf-agent-cjz6w   Started container netobserv-ebpf-agent
+6m1s        Normal    Created            pod/netobserv-ebpf-agent-cjz6w   Created container: netobserv-ebpf-agent

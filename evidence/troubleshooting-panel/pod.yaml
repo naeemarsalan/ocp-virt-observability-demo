@@ -1,0 +1,198 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    k8s.ovn.org/pod-networks: '{"default":{"ip_addresses":["10.129.1.233/23"],"mac_address":"0a:58:0a:81:01:e9","gateway_ips":["10.129.0.1"],"routes":[{"dest":"10.128.0.0/14","nextHop":"10.129.0.1"},{"dest":"172.30.0.0/16","nextHop":"10.129.0.1"},{"dest":"169.254.0.5/32","nextHop":"10.129.0.1"},{"dest":"100.64.0.0/16","nextHop":"10.129.0.1"}],"ip_address":"10.129.1.233/23","gateway_ip":"10.129.0.1","role":"primary"}}'
+    k8s.v1.cni.cncf.io/network-status: |-
+      [{
+          "name": "ovn-kubernetes",
+          "interface": "eth0",
+          "ips": [
+              "10.129.1.233"
+          ],
+          "mac": "0a:58:0a:81:01:e9",
+          "default": true,
+          "dns": {}
+      }]
+    openshift.io/scc: restricted-v2
+    seccomp.security.alpha.kubernetes.io/pod: runtime/default
+    security.openshift.io/validated-scc-subject-type: user
+  creationTimestamp: "2026-09-11T12:58:44Z"
+  generateName: korrel8r-578787ddc4-
+  generation: 1
+  labels:
+    app.kubernetes.io/instance: korrel8r
+    app.kubernetes.io/managed-by: observability-operator
+    app.kubernetes.io/part-of: UIPlugin
+    pod-template-hash: 578787ddc4
+  name: korrel8r-578787ddc4-nnbh6
+  namespace: openshift-cluster-observability-operator
+  ownerReferences:
+  - apiVersion: apps/v1
+    blockOwnerDeletion: true
+    controller: true
+    kind: ReplicaSet
+    name: korrel8r-578787ddc4
+    uid: 292a0459-9885-4114-bc3c-b4b180687364
+  resourceVersion: "1198125240"
+  uid: 4f169226-d857-4885-8d9c-cec1e6b4134b
+spec:
+  containers:
+  - command:
+    - korrel8r
+    - web
+    - --https=:9443
+    - --cert=/secrets/tls.crt
+    - --key=/secrets/tls.key
+    - --config=/config/korrel8r.yaml
+    image: registry.redhat.io/cluster-observability-operator/korrel8r-rhel9@sha256:90cc70741585b3a555888cc119c1ad630e988513dd2065158b26f6fa33dc8a22
+    imagePullPolicy: IfNotPresent
+    name: korrel8r
+    ports:
+    - containerPort: 9443
+      protocol: TCP
+    resources: {}
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      runAsNonRoot: true
+      runAsUser: 1002230000
+      seccompProfile:
+        type: RuntimeDefault
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /secrets/
+      name: serving-cert
+      readOnly: true
+    - mountPath: /config/
+      name: korrel8r-config
+      readOnly: true
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-6wpvk
+      readOnly: true
+  dnsPolicy: ClusterFirst
+  enableServiceLinks: true
+  imagePullSecrets:
+  - name: troubleshooting-panel-sa-dockercfg-8x4n8
+  nodeName: 80-18-44-f0-71-30
+  preemptionPolicy: PreemptLowerPriority
+  priority: 0
+  restartPolicy: Always
+  schedulerName: default-scheduler
+  securityContext:
+    fsGroup: 1002230000
+    seLinuxOptions:
+      level: s0:c47,c34
+    seccompProfile:
+      type: RuntimeDefault
+  serviceAccount: troubleshooting-panel-sa
+  serviceAccountName: troubleshooting-panel-sa
+  terminationGracePeriodSeconds: 30
+  tolerations:
+  - effect: NoExecute
+    key: node.kubernetes.io/not-ready
+    operator: Exists
+    tolerationSeconds: 300
+  - effect: NoExecute
+    key: node.kubernetes.io/unreachable
+    operator: Exists
+    tolerationSeconds: 300
+  volumes:
+  - name: serving-cert
+    secret:
+      defaultMode: 420
+      secretName: korrel8r
+  - configMap:
+      defaultMode: 420
+      name: korrel8r
+    name: korrel8r-config
+  - name: kube-api-access-6wpvk
+    projected:
+      defaultMode: 420
+      sources:
+      - serviceAccountToken:
+          expirationSeconds: 3607
+          path: token
+      - configMap:
+          items:
+          - key: ca.crt
+            path: ca.crt
+          name: kube-root-ca.crt
+      - downwardAPI:
+          items:
+          - fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+            path: namespace
+      - configMap:
+          items:
+          - key: service-ca.crt
+            path: service-ca.crt
+          name: openshift-service-ca.crt
+status:
+  conditions:
+  - lastProbeTime: null
+    lastTransitionTime: "2026-09-11T12:58:56Z"
+    status: "True"
+    type: PodReadyToStartContainers
+  - lastProbeTime: null
+    lastTransitionTime: "2026-09-11T12:58:44Z"
+    status: "True"
+    type: Initialized
+  - lastProbeTime: null
+    lastTransitionTime: "2026-09-11T12:58:56Z"
+    status: "True"
+    type: Ready
+  - lastProbeTime: null
+    lastTransitionTime: "2026-09-11T12:58:56Z"
+    status: "True"
+    type: ContainersReady
+  - lastProbeTime: null
+    lastTransitionTime: "2026-09-11T12:58:44Z"
+    status: "True"
+    type: PodScheduled
+  containerStatuses:
+  - containerID: cri-o://7c371b82861526c80f9aa7f7694b361895c855e7d082d5bf9e35b8e2071f7e7e
+    image: registry.redhat.io/cluster-observability-operator/korrel8r-rhel9@sha256:90cc70741585b3a555888cc119c1ad630e988513dd2065158b26f6fa33dc8a22
+    imageID: registry.redhat.io/cluster-observability-operator/korrel8r-rhel9@sha256:7991014409d5192eb9712bed519fb503230ac1d6e1c6892bca9813dfd5417378
+    lastState: {}
+    name: korrel8r
+    ready: true
+    resources: {}
+    restartCount: 0
+    started: true
+    state:
+      running:
+        startedAt: "2026-09-11T12:58:55Z"
+    user:
+      linux:
+        gid: 0
+        supplementalGroups:
+        - 0
+        - 1002230000
+        uid: 1002230000
+    volumeMounts:
+    - mountPath: /secrets/
+      name: serving-cert
+      readOnly: true
+      recursiveReadOnly: Disabled
+    - mountPath: /config/
+      name: korrel8r-config
+      readOnly: true
+      recursiveReadOnly: Disabled
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-6wpvk
+      readOnly: true
+      recursiveReadOnly: Disabled
+  hostIP: 172.16.1.4
+  hostIPs:
+  - ip: 172.16.1.4
+  phase: Running
+  podIP: 10.129.1.233
+  podIPs:
+  - ip: 10.129.1.233
+  qosClass: BestEffort
+  startTime: "2026-09-11T12:58:44Z"

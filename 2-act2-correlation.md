@@ -1,21 +1,23 @@
-# ACT 2 — Correlation: Alert → VMI → Pod → Logs → Netflows
+# ACT 2 (Correlation): Alert → VMI → Pod → Logs → Netflows
 
-**What this act proves:** the same alert, VM, pod, log line, and network flow all live in one open, label-joinable store — so the walk from "something fired" to "here is the exact traffic that pod sent" is a few clicks, not a context switch into a different product. **What this act must not claim:** that the out-of-the-box Observe dashboards already do this walk. They don't (see the contrast beat). The Troubleshooting Panel is the piece that closes that specific, real gap.
+**What this act proves:** the same alert, VM, pod, log line, and network flow all live in one open, label-joinable store, so the walk from "something fired" to "here is the exact traffic that pod sent" is a few clicks, not a context switch into a different product. **What this act must not claim:** that the out-of-the-box Observe dashboards already do this walk. They don't (see the contrast beat). The Troubleshooting Panel is the piece that closes that specific, real gap.
 
-Target versions this runbook is written against: **OpenShift 4.20 / OpenShift Virtualization 4.20 / Cluster Observability Operator 1.5+ (Perses GA) / OpenShift Logging 6.x with LokiStack / Network Observability operator (GA) / Tempo optional**. The demo cluster was not reachable while writing this — every claim below is sourced against upstream source code (kubevirt/kubevirt, kubevirt/hyperconverged-cluster-operator, korrel8r/korrel8r, rhobs/observability-operator) rather than assumed, and a preflight script pins the live-cluster facts before you rely on any of it. Where a source fact could plausibly have drifted between "when this was written" (2026-09-08) and your demo date, that's flagged explicitly rather than glossed over.
+Target versions this runbook is written against: **OpenShift 4.20 / OpenShift Virtualization 4.20 / Cluster Observability Operator 1.5+ (Perses GA) / OpenShift Logging 6.x with LokiStack / Network Observability operator (GA) / Tempo optional**. The demo cluster was not reachable while writing this, every claim below is sourced against upstream source code (kubevirt/kubevirt, kubevirt/hyperconverged-cluster-operator, korrel8r/korrel8r, rhobs/observability-operator) rather than assumed, and a preflight script pins the live-cluster facts before you rely on any of it. Where a source fact could plausibly have drifted between "when this was written" (2026-09-08) and your demo date, that's flagged explicitly rather than glossed over.
 
-All files referenced below are written to `/tmp/claude-1000/-home-anaeem-virt-monitorong/2f0da83a-3cef-49d6-93d9-35e42bb17a53/scratchpad/demo/act2-*`. They sit alongside an existing Act 1 preflight (`preflight.sh`) and migration beat (`migration-beat.sh`) from earlier work on this same demo — Act 2's own preflight (`act2-01-korrel8r-verify.sh`) is additive to that, not a replacement.
+All files referenced below are written to `/tmp/claude-1000/-home-anaeem-virt-monitorong/2f0da83a-3cef-49d6-93d9-35e42bb17a53/scratchpad/demo/act2-*`. They sit alongside an existing Act 1 preflight (`preflight.sh`) and migration beat (`migration-beat.sh`) from earlier work on this same demo, Act 2's own preflight (`act2-01-korrel8r-verify.sh`) is additive to that, not a replacement.
+
+**Update: this act has since been run against the live cluster** (OCP 4.20.32, OpenShift Virtualization 4.20.24, COO 1.5.2, korrel8r 0.11.1). Two things changed from the source-only version of this document below, both called out inline where they apply, and both worth reading before you rehearse: the Troubleshooting Panel's Focus button does not work from the VirtualMachine, VirtualMachineInstance, or Pod detail pages on this build (§3, §4); and the `OutdatedVirtualMachineInstanceWorkloads` alert has stayed Pending all week on this cluster for a reason beyond the documented 24h `for` clause (§4).
 
 ---
 
 ## 0. Before anything else: run the preflight checks
 
 1. Run the existing `preflight.sh` (checks OCP version, CNV install, guest agent, schedstats, COO/Perses/korrel8r presence, LokiStack/NetObserv/Tempo CRDs, the 4.20 cgroups v1→v2 `cgroup_id`→`id` panel-break, Prometheus scale). Fix every `FAIL` before continuing.
-2. Run **`act2-01-korrel8r-verify.sh`** (new, Act-2-specific — see §2 below). This is the single most important preflight step in this entire act: it is the difference between the walk working live and a silent dead end on stage.
+2. Run **`act2-01-korrel8r-verify.sh`** (new, Act-2-specific, see §2 below). This is the single most important preflight step in this entire act: it is the difference between the walk working live and a silent dead end on stage.
 
 ---
 
-## 1. The contrast beat — show the dead end first
+## 1. The contrast beat, show the dead end first
 
 Before touching the Troubleshooting Panel, show the audience the OOTB path that does **not** work, so the panel lands as a fix to a real, demonstrated gap rather than a feature nobody asked for.
 
@@ -23,10 +25,10 @@ Before touching the Troubleshooting Panel, show the audience the OOTB path that 
 
 **What to show:**
 1. Switch the table to **By VM**, sort by CPU or memory. Point at whichever demo VM is hot (reuse the Act 1 demo VM, or recipe (c)'s `vm-memory-pressure` once its hog is running).
-2. Try to click through from the VM name to its virt-launcher pod. **There is nothing to click.** The VM name in this dashboard is text, not a link to the pod that's actually consuming the resource. This is not a bug you're pointing out to be unkind about the product — it is the literal, verifiable gap: the pod that owns the workload has no ownerReference back to the VMI (label-only relationship — `kubevirt.io=virt-launcher`, `vm.kubevirt.io/name=<vmi>`), so generic console navigation and generic Kubernetes tooling both dead-end here.
+2. Try to click through from the VM name to its virt-launcher pod. **There is nothing to click.** The VM name in this dashboard is text, not a link to the pod that's actually consuming the resource. This is not a bug you're pointing out to be unkind about the product, it is the literal, verifiable gap: the pod that owns the workload has no ownerReference back to the VMI (label-only relationship, `kubevirt.io=virt-launcher`, `vm.kubevirt.io/name=<vmi>`), so generic console navigation and generic Kubernetes tooling both dead-end here.
 3. Name it plainly: "This is the OOTB console experience. If your workflow today is vCenter → esxtop → per-VM drill-down, this specific screen is a step backward from that, and I want to be upfront about it before I show you the piece that fixes it."
 
-Then pivot: "Everything on this dashboard is still just Prometheus underneath — it's the same TSDB, same labels, same query language your pod/node dashboards already use. Watch what happens when we ask a rules engine to walk those labels for us instead of a hand-built dashboard."
+Then pivot: "Everything on this dashboard is still just Prometheus underneath, it's the same TSDB, same labels, same query language your pod/node dashboards already use. Watch what happens when we ask a rules engine to walk those labels for us instead of a hand-built dashboard."
 
 ---
 
@@ -41,16 +43,16 @@ include:
   - /etc/korrel8r/rules/all.yaml
 ```
 
-and `etc/korrel8r/rules/all.yaml` upstream is **an empty stub** — literally: *"Empty: all rules previously in YAML are now compiled into the binary."* So whether your cluster has the KubeVirt rules depends entirely on which `korrel8r` container image tag your COO build pinned — not on any config you or the operator can see in a ConfigMap.
+and `etc/korrel8r/rules/all.yaml` upstream is **an empty stub**, literally: *"Empty: all rules previously in YAML are now compiled into the binary."* So whether your cluster has the KubeVirt rules depends entirely on which `korrel8r` container image tag your COO build pinned, not on any config you or the operator can see in a ConfigMap.
 
-Per the upstream `CHANGELOG.md` (dates verified): KubeVirt rules first shipped as YAML config in **korrel8r v0.11.4 (2026-07-22)** — *"KubeVirt correlation rules for VM troubleshooting"* — then were recompiled as quickrules in **v0.12.1 (2026-08-26)** — *"Moved all existing rules to quickrules."* Both dates are recent. They are **not mentioned anywhere in the COO 1.0–1.5.2 product release notes**. The only way to know if your build has them is to ask the running pod, which is what step 2 below does.
+Per the upstream `CHANGELOG.md` (dates verified): KubeVirt rules first shipped as YAML config in **korrel8r v0.11.4 (2026-07-22)**, *"KubeVirt correlation rules for VM troubleshooting"*, then were recompiled as quickrules in **v0.12.1 (2026-08-26)**, *"Moved all existing rules to quickrules."* Both dates are recent. They are **not mentioned anywhere in the COO 1.0-1.5.2 product release notes**. The only way to know if your build has them is to ask the running pod, which is what step 2 below does.
 
 ### The verification commands
 
-Run **`act2-01-korrel8r-verify.sh`** (`COO_NS` defaults to `openshift-cluster-observability-operator`, the documented default COO install namespace — confirmed current as of this writing; it changed from `openshift-operators` in an earlier COO release, so double-check on older clusters). It performs, in order:
+Run **`act2-01-korrel8r-verify.sh`** (`COO_NS` defaults to `openshift-cluster-observability-operator`, the documented default COO install namespace, confirmed current as of this writing; it changed from `openshift-operators` in an earlier COO release, so double-check on older clusters). It performs, in order:
 
-1. **`korrel8r version`** inside the pod — compare against the changelog dates above.
-2. **`korrel8r rules --config=/config/korrel8r.yaml -n '(Vm|Vmi|Vmim|Alert)' --long`** — the real, load-bearing check. This is a genuine CLI subcommand (`cmd/korrel8r/rules.go`, verified from source, including its `--start`/`-s`, `--goal`/`-g`, `--name`/`-n`, and `--long` flags) that lists every rule *actually loaded in the running engine*, matched by name/start/goal:
+1. **`korrel8r version`** inside the pod, compare against the changelog dates above.
+2. **`korrel8r rules --config=/config/korrel8r.yaml -n '(Vm|Vmi|Vmim|Alert)' --long`**, the real, load-bearing check. This is a genuine CLI subcommand (`cmd/korrel8r/rules.go`, verified from source, including its `--start`/`-s`, `--goal`/`-g`, `--name`/`-n`, and `--long` flags) that lists every rule *actually loaded in the running engine*, matched by name/start/goal:
    ```bash
    oc exec -n openshift-cluster-observability-operator <korrel8r-pod> -- \
      korrel8r rules --config=/config/korrel8r.yaml -n '(Vm|Vmi|Vmim|Alert)' --long
@@ -63,8 +65,10 @@ Run **`act2-01-korrel8r-verify.sh`** (`COO_NS` defaults to `openshift-cluster-ob
    VmiToLogs: [VirtualMachineInstance.kubevirt.io] -> [log]
    ```
    Names to specifically confirm are present: `VmToVmi`, `VmiToPod`, `VmiToNode`, `VmToAlert`, `VmiToAlert`, `AlertToVM`, `AlertToVMI`, `VmiToLogs`. (Full verified list in §6.)
-3. Cross-check via the REST API — **`GET /api/v1alpha1/domain/k8s/classes`** should list `VirtualMachineInstance.kubevirt.io`, and (with a route) **`GET /api/v1alpha1/domains`** lists every configured domain and its store. (Both paths confirmed directly against korrel8r's own OpenAPI spec: base path `/api/v1alpha1`, routes `/domains` and `/domain/{domain}/classes`.) Note: this alone is **not sufficient proof** — it only shows the `k8s` domain knows the CRD exists, not that any rule connects an alert to it. Use the `rules` CLI output as the real signal.
+3. Cross-check via the REST API, **`GET /api/v1alpha1/domain/k8s/classes`** should list `VirtualMachineInstance.kubevirt.io`, and (with a route) **`GET /api/v1alpha1/domains`** lists every configured domain and its store. (Both paths confirmed directly against korrel8r's own OpenAPI spec: base path `/api/v1alpha1`, routes `/domains` and `/domain/{domain}/classes`.) Note: this alone is **not sufficient proof**, it only shows the `k8s` domain knows the CRD exists, not that any rule connects an alert to it. Use the `rules` CLI output as the real signal.
 4. Fails loudly (`exit 1`) if any required rule is missing, and tells you exactly what to do next (upgrade COO to pick up a newer pinned korrel8r image, or use the fallback below).
+
+**Confirmed on the live cluster:** the shipped korrel8r is 0.11.1 with 47 rules total, 4 of them KubeVirt-specific. `PASS` for `VmToVmi`, `VmiToPod`, `VmiToNode`, `VmToPVC`, plus the generic (not KubeVirt-specific) `PodToLogs`, `PodToAlert`, `PodToNode`, `K8sSrcToNetflow`, and `AllToMetric`. `FAIL, rule missing` for `VmToAlert`, `VmiToAlert`, `AlertToVM`, `AlertToVMI`, and `VmiToLogs`, exactly the set that needs korrel8r 0.11.4 or later. That means on this cluster today: VMI to pod to logs, metrics, flows, and alerts all work, because the walk starts from a `k8s` object and the generic rules carry it the rest of the way; what does not work is starting from an alert and reaching a VM or VMI directly, or reaching logs straight from a VMI. Upstream 0.12.1 (verified separately, see Act 3) ships 104 rules, 30 of them KubeVirt-specific, and closes every one of those gaps.
 
 ### If the rules are missing: the honest fallback
 
@@ -77,13 +81,15 @@ type TroubleshootingPanelConfig struct {
 }
 ```
 
-That's the entire spec. No `rules:`, no `configMapRef:`, nothing. (`EnableAgentNavigation` is itself gated Dev Preview to OCP 4.22+ — verified directly in the operator's controller code, `pkg/controllers/uiplugin/troubleshooting_panel.go`, which checks `IsVersionAheadOrEqual(clusterVersion, "v4.22")` and logs *"Agent Navigation only available as a Dev Preview in OpenShift 4.22+"* — irrelevant at our pinned 4.20 target; don't turn it on.)
+That's the entire spec. No `rules:`, no `configMapRef:`, nothing. (`EnableAgentNavigation` is itself gated Dev Preview to OCP 4.22+, verified directly in the operator's controller code, `pkg/controllers/uiplugin/troubleshooting_panel.go`, which checks `IsVersionAheadOrEqual(clusterVersion, "v4.22")` and logs *"Agent Navigation only available as a Dev Preview in OpenShift 4.22+"*, irrelevant at our pinned 4.20 target; don't turn it on.)
 
-The korrel8r `ConfigMap`/`Deployment` that *does* control rules is entirely operator-managed and continuously reconciled (standard controller-runtime `NewUpdater` pattern). So the honest framing is: **patching it is a demo trick, not a configuration.** It'll work for a single live run and get silently reverted by the operator afterward. `act2-06-korrel8r-custom-rule-fallback.yaml` has the exact YAML rule syntax (lifted verbatim from a real upstream reference file, `korrel8r/korrel8r @ etc/korrel8r/rules/_samples/kubevirt.yaml` — I diffed it character-for-character and it matches, not invented) plus the `oc set volume` / ConfigMap-edit steps, with this same caveat repeated in its header. Say this out loud if you use it: *"This isn't something I'd hand you as a production config today — it's proof the mechanism is a plain rules file you could extend, not a black box."*
+The korrel8r `ConfigMap`/`Deployment` that *does* control rules is entirely operator-managed and continuously reconciled (standard controller-runtime `NewUpdater` pattern). So the honest framing is: **patching it is a demo trick, not a configuration.** It'll work for a single live run and get silently reverted by the operator afterward. `act2-06-korrel8r-custom-rule-fallback.yaml` has the exact YAML rule syntax (lifted verbatim from a real upstream reference file, `korrel8r/korrel8r @ etc/korrel8r/rules/_samples/kubevirt.yaml`, I diffed it character-for-character and it matches, not invented) plus the `oc set volume` / ConfigMap-edit steps, with this same caveat repeated in its header. Say this out loud if you use it: *"This isn't something I'd hand you as a production config today, it's proof the mechanism is a plain rules file you could extend, not a black box."*
+
+**Tried live, and it confirms the caveat above.** Adding `AlertToVMI`/`VmiToLogs` YAML rules by hand to the operator's ConfigMap was reverted by the Cluster Observability Operator within about 2 minutes, before the patched config was even useful for more than one run. Worse, 0.11.1 doesn't have the `required` template function that the 0.12.1-style rule text uses, so the patched pod came up with the Troubleshooting Panel broken outright ("Search Error: invalid rule AlertToVMI: template: AlertToVMI:1: function \"required\" not defined") until the pod was restarted back onto the clean config. Do not try this as a live save during a demo; if you need the missing rules, the only real fix is a newer korrel8r image.
 
 ---
 
-## 3. Trigger recipe (a) — deterministic, no upgrade: `VMCannotBeEvicted`
+## 3. Trigger recipe (a), deterministic, no upgrade: `VMCannotBeEvicted`
 
 **Verified verbatim from `kubevirt/kubevirt @ pkg/monitoring/rules/alerts/vms.go`:**
 
@@ -95,7 +101,7 @@ For:   1m
 Labels: severity=warning, operator_health_impact=none
 Summary: "The VM's eviction strategy is set to Live Migration but the VM is not migratable"
 ```
-(Note: the compiled rule additionally wraps this whole expr in an outer `label_replace(..., "vm", "$1", "name", "(.+)")` that copies the `name` label into a redundant `vm` label — omitted above for readability. It doesn't change when the alert fires or what it joins on; the korrel8r walk below keys off `name`/`namespace`, which are already present without the wrapper.)
+(Note: the compiled rule additionally wraps this whole expr in an outer `label_replace(..., "vm", "$1", "name", "(.+)")` that copies the `name` label into a redundant `vm` label, omitted above for readability. It doesn't change when the alert fires or what it joins on; the korrel8r walk below keys off `name`/`namespace`, which are already present without the wrapper.)
 
 ### Trigger manifest
 
@@ -135,7 +141,7 @@ spec:
 ```
 
 **Two traps that silently defeat this recipe:**
-1. `evictionStrategy: LiveMigrateIfPossible` instead of `LiveMigrate` — the "IfPossible" variant is *designed* to fall back to non-disruptive behavior for a non-migratable VM; `kubevirt_vmi_non_evictable` stays 0 and the alert never fires. Verified enum (`staging/src/kubevirt.io/api/core/v1/types.go`): `EvictionStrategyNone`, `EvictionStrategyLiveMigrate`, `EvictionStrategyLiveMigrateIfPossible`, `EvictionStrategyExternal`.
+1. `evictionStrategy: LiveMigrateIfPossible` instead of `LiveMigrate`, the "IfPossible" variant is *designed* to fall back to non-disruptive behavior for a non-migratable VM; `kubevirt_vmi_non_evictable` stays 0 and the alert never fires. Verified enum (`staging/src/kubevirt.io/api/core/v1/types.go`): `EvictionStrategyNone`, `EvictionStrategyLiveMigrate`, `EvictionStrategyLiveMigrateIfPossible`, `EvictionStrategyExternal`.
 2. Letting the storage class grant `ReadWriteMany` even though you didn't need it. Forcing `accessModes: [ReadWriteOnce]` guarantees the block, per upstream docs: *"Live migration is only permitted when the volume access mode is set to ReadWriteMany"* (kubevirt.io/user-guide, Live Migration page).
 
 ### Apply and confirm
@@ -147,25 +153,36 @@ oc get vmi vm-non-migratable -n demo-vms -o wide
 # -> LIVE-MIGRATABLE column: False
 ```
 
-**Time to fire:** no drain or manual action needed — KubeVirt evaluates migratability continuously from VMI status. Budget **~2–3 minutes** from Running to `state=firing` (one Prometheus eval interval to set the gauge, plus the alert's own `for: 1m`).
+**Time to fire:** no drain or manual action needed, KubeVirt evaluates migratability continuously from VMI status. Budget **~2-3 minutes** from Running to `state=firing` (one Prometheus eval interval to set the gauge, plus the alert's own `for: 1m`).
 
 ### The walk
 
-1. **Observe → Alerting → Alerts.** Filter by alert name `VMCannotBeEvicted`, state Firing. Click the instance for `demo-vms/vm-non-migratable` so it's showing in the main console.
-2. With the alert's detail page open, use the **Troubleshooting Panel**: open the **Application Launcher** (the grid/"squares" icon in the console's top navigation bar) and click **Signal Correlation**. Click **Focus** to build a correlation graph rooted at whatever is currently in the main console view — here, the firing alert. (Verified against the current docs.redhat.com Cluster Observability Operator 1.x "Troubleshooting Panel UI plugin" page — this Application Launcher → Signal Correlation → Focus flow, usable from most console pages including alerts, VMs, and pods, is the documented mechanism at the COO 1.5+ target this runbook is pinned to. Panel UX has visibly moved around across COO releases, so confirm this exact click sequence during rehearsal on your actual console build.)
-3. **Expected node graph:** root = the alert node. First-degree neighbor (via `AlertToVMI`) = the `VirtualMachineInstance` `vm-non-migratable`. From the VMI, expect further edges: `VmiToPod` → the `virt-launcher-vm-non-migratable-xxxxx` pod; `VmiToNode` → the node it's scheduled on; `VmiToPVC` → the `vm-non-migratable-disk` PVC; `VmiToLogs` → a `log` domain node (if LokiStack is installed — see §6); `VmiToMetric` → a `metric` node back into the same Prometheus data the alert came from. No `netflow` node appears from this alert by default (no quickrule connects VMI directly to `netflow`); to show netflow, click into the pod node and re-run Focus from there — the generic k8s→netflow quickrules `K8sSrcToNetflow` / `K8sDstToNetflow` (verified in `pkg/rules/quickrules/k8s.qtpl`; their `start.classes` list is `[Node, Pod, Service]`, so they apply to a Pod node) pick it up from there where NetObserv is installed. (Netflow-domain rules only run in the netflow→k8s direction — `pkg/rules/quickrules/netflow.qtpl` has no k8s→netflow rule — so the pod-side k8s rules are the only path in.)
+1. **Observe → Alerting → Alerts.** This console's Alerting page has a Project selector (the COO monitoring plugin); it shows nothing until you pick **All Projects**, set that first, or the alert simply won't be in the list. Filter by alert name `VMCannotBeEvicted`, state Firing. Click the instance for `demo-vms/vm-non-migratable`. Confirmed live: this alert fires at 13:24:44Z for vm-non-migratable. Note that this alert instance's own `pod` label points at the exporting virt-handler pod, not the VM's virt-launcher pod, use the alert's `name`/`namespace` to find the actual workload, not that label.
+2. **Console reality, confirmed live on COO 1.5.2 (korrel8r 0.11.1): the Focus button does not build a starting query from the VirtualMachine, VirtualMachineInstance, or Pod detail pages on this build.** Clicking it there returns "Empty Query, No starting point for correlation." Two paths do work: opening the Troubleshooting Panel from the alert's own detail page (Application Launcher → Signal Correlation → Focus), when korrel8r's alert domain recognises that alert instance, and typing a korrel8r query directly into the panel's own query editor, which works from any page. Confirm which path works on your build during rehearsal; don't promise Focus-from-a-VM-page live.
+3. **On this build's actual rule set, the walk cannot start from the alert either.** `AlertToVMI` is one of the rules missing from korrel8r 0.11.1 (confirmed live, see §2), so Focus on the firing alert reaches only the `alert` and `metric` nodes, the same dead end the outdated-workloads alert hits in §4. To show the VMI → pod → logs walk on this build, type the VMI query directly into the panel's query editor instead: `k8s:VirtualMachineInstance.v1.kubevirt.io:{"namespace":"demo-vms","name":"vm-non-migratable"}`. From there, the rules that *are* present on 0.11.1 take over: `VmiToPod` → the `virt-launcher-vm-non-migratable-xxxxx` pod, then the generic `PodToLogs` → a `log` domain node, `PodToAlert` → back to the firing alert, `PodToNode` → the node it's scheduled on, and `AllToMetric` → metric series. `VmiToNode` and `VmToPVC` are also compiled into 0.11.1 (§2), so expect a node/PVC edge too; confirm the exact shape on your own build rather than assuming it matches the fuller rule list in §6, which describes the upstream rule set in general, not this specific pinned image. No `netflow` node appears from a VMI or alert by default; to show netflow, click into the pod node and re-run Focus from there, `K8sSrcToNetflow` is confirmed present on 0.11.1 and applies once you're at a Pod node.
 4. Click the pod node → console navigates to the virt-launcher pod's own resource page. Show its logs tab (live `oc logs`) side by side with the Loki-backed `log` node in the graph (aggregated/searchable, same content, different store path) to make the "same data, joined" point concrete.
+5. **If you want the full alert → VM → VMI → pod walk on stage**, that is the Act 3 upstream korrel8r 0.12.1 story, not this console build: the same `VMCannotBeEvicted` query, run against the experimental upstream instance, reaches VM, VMI, pod, node, metric, and log in one graph call (see `3-act3-agentic.md`). Frame that explicitly as "here is the same walk on the rule set that's coming," not as something this console does today.
+
+### The click path that works on this build (confirmed live, COO 1.5.2)
+
+1. Open the page you want to start from. The Alerting list (Observe, Alerting, Project set to All Projects) is the one page where Focus is enabled; on the VM, VMI and Pod pages it is greyed out.
+2. Open the panel: Application launcher (the grid icon, top right), then Signal Correlation.
+3. Click the small expand chevron just right of the time-range dropdown. A Start Query box appears with the placeholder `domain:class:selector`.
+4. Paste the query. For the VMI walk: `k8s:VirtualMachineInstance.v1.kubevirt.io:{"namespace":"demo-vms","name":"vm-non-migratable"}`. For the alert: `alert:alert:{"alertname":"VMCannotBeEvicted","namespace":"demo-vms","name":"vm-non-migratable"}`.
+5. Leave Search Type on Neighbours with 3 hops and click Search.
+
+What you get on the shipped korrel8r 0.11.1: from the VMI query, twelve node classes (VMI, VM, Pod, Node, PVC, PersistentVolume, StorageClass, DataVolume, Events, Metric, Network flows, Application logs; screenshot `evidence/screenshots/console-panel-graph-from-VMI-korrel8r-0.11.1.png`). From the alert query, Alert and Metric only (`console-panel-graph-from-alert-korrel8r-0.11.1.png`). Click any node to open that resource or its logs.
 
 ### Reset
 
 ```bash
 oc delete vm vm-non-migratable -n demo-vms
 ```
-`kubevirt_vmi_non_evictable` drops to 0 immediately on VMI deletion; the alert resolves instantly (resolution is not gated by `for` — only the transition *into* Firing is).
+`kubevirt_vmi_non_evictable` drops to 0 immediately on VMI deletion; the alert resolves instantly (resolution is not gated by `for`, only the transition *into* Firing is).
 
 ---
 
-## 4. Trigger recipe (b) — the upgrade beat: `OutdatedVirtualMachineInstanceWorkloads`
+## 4. Trigger recipe (b), the upgrade beat: `OutdatedVirtualMachineInstanceWorkloads`
 
 **Verified verbatim from `kubevirt/kubevirt @ pkg/monitoring/rules/alerts/vms.go`:**
 
@@ -177,11 +194,11 @@ Labels: severity=warning, operator_health_impact=none
 Summary: "Some running VMIs are still active in outdated pods after KubeVirt control plane update has completed."
 ```
 
-### Two things that change how you run this recipe — read before staging
+### Two things that change how you run this recipe, read before staging
 
-**1. The 24-hour `for` is real. You cannot demo the *Firing* transition live in one sitting.** The metric goes nonzero within a couple of scrape intervals of the upgrade completing with an outdated VMI running (alert enters **Pending** almost immediately) — but it will not become **Firing** until 24 real hours later. **Pre-stage this at least 24h before you're on stage.** `act2-03-recipe-b-outdated-workloads.sh stage` walks the setup; run it the day before, then just let it sit.
+**1. The 24-hour `for` is real, and on this cluster pre-staging 24h ahead is not actually enough.** The metric goes nonzero within a couple of scrape intervals of the upgrade completing with an outdated VMI running (alert enters **Pending** almost immediately), but it will not become **Firing** until 24 continuous hours later. Confirmed live: this alert has sat in **Pending for at least 7 days straight** on this cluster, even though the underlying condition (21 outdated VMIs) has been true the entire time. The reason is not the workload; it's that both virt-controller replicas are crash-looping on leader-election lease renewal failures (106 and 105 restarts each over 7 days), and the `ALERTS_FOR_STATE` series is tied to whichever replica currently holds the lease, so every restart resets the 24h pending timer back to zero (36 resets counted in 7 days, roughly one every 4-5 hours). **Do not promise this alert will reach Firing on a fixed schedule.** `act2-03-recipe-b-outdated-workloads.sh stage` still walks the setup and is worth running the day before for the Pending transition and the gauge itself; just don't build the demo around watching it go Firing. Demo `kubevirt_vmi_number_of_outdated` and `oc get vmi -A -l kubevirt.io/outdatedLauncherImage` instead, those are the reliable, always-available signals for this beat.
 
-**2. This metric carries no per-VM labels — the alert→VMI walk will not resolve from this alert.** I verified this from the exporter source, `kubevirt/kubevirt @ pkg/monitoring/metrics/virt-controller/leader_metrics.go`:
+**2. This metric carries no per-VM labels, the alert→VMI walk will not resolve from this alert.** I verified this from the exporter source, `kubevirt/kubevirt @ pkg/monitoring/metrics/virt-controller/leader_metrics.go`:
 
 ```go
 outdatedVirtualMachineInstanceWorkloads = operatormetrics.NewGauge(
@@ -192,9 +209,9 @@ func SetOutdatedVirtualMachineInstanceWorkloads(value int) {
 }
 ```
 
-This is a single **cluster-wide gauge with zero label dimensions** — a bare `.Set(value)`, no `.WithLabelValues(...)`. Any `namespace` label the alert instance carries comes only from Prometheus's own scrape-target relabeling (the CNV operator's own namespace, e.g. `openshift-cnv`) — there is no `name` label identifying any specific VM. Korrel8r's `AlertToVMI`/`AlertToVM` quickrules both do `Require(l["name"])` (verified, `alert.qtpl`); with no `name` label present, that `Require()` fails and the rule silently produces **no edge**. Opening the Troubleshooting Panel on *this* alert shows only the isolated alert node (or, at best, a link to the virt-controller pod itself — not to any VM).
+This is a single **cluster-wide gauge with zero label dimensions**, a bare `.Set(value)`, no `.WithLabelValues(...)`. Any `namespace` label the alert instance carries comes only from Prometheus's own scrape-target relabeling (the CNV operator's own namespace, e.g. `openshift-cnv`), there is no `name` label identifying any specific VM. Korrel8r's `AlertToVMI`/`AlertToVM` quickrules both do `Require(l["name"])` (verified, `alert.qtpl`); with no `name` label present, that `Require()` fails and the rule silently produces **no edge**. Opening the Troubleshooting Panel on *this* alert shows only the isolated alert node (or, at best, a link to the virt-controller pod itself, not to any VM).
 
-**This is not a flaw in the demo — it's a true, verifiable statement about this specific alert, and it's worth saying out loud:** *"Notice this one doesn't walk to a VM — that's because the metric is genuinely fleet-scoped, not VM-scoped, by design. If you want the per-VM walk, here's the pod-level view instead"* — then pick one VMI from the outdated list and open the Troubleshooting Panel (Application Launcher → Signal Correlation → Focus) from that VMI's own resource page (Virtualization → VirtualMachines → `<name>`), not from the alert. Use recipes (a) or (c) as your primary "walk" demos; use (b) for a different, equally real beat — a fleet-health signal with no vCenter/Aria analog, and its automated remediation.
+**This is not a flaw in the demo, it's a true, verifiable statement about this specific alert, and it's worth saying out loud:** *"Notice this one doesn't walk to a VM, that's because the metric is genuinely fleet-scoped, not VM-scoped, by design."* Recall from §3 that Focus doesn't build a starting query from a VMI's own resource page on this build anyway, so the way to show a per-VM view for one of these outdated VMIs is the same query-editor path used in recipe (a): pick a name/namespace from the outdated list and type `k8s:VirtualMachineInstance.v1.kubevirt.io:{"namespace":"<ns>","name":"<name>"}` into the panel's query editor. Use recipes (a) or (c) as your primary "walk" demos; use (b) for a different, equally real beat, a fleet-health signal with no vCenter/Aria analog, and its automated remediation.
 
 ### Stage → verify → drain
 
@@ -215,10 +232,10 @@ oc patch hyperconverged.v1.hco.kubevirt.io kubevirt-hyperconverged -n openshift-
   -p '{"spec":{"virtualization":{"workloadUpdateStrategy":{"workloadUpdateMethods":[]}}}}'
 # (act2-03-recipe-b-outdated-workloads.sh does this detection for you via hco_patch_wum)
 # then upgrade the OpenShift Virtualization operator (any version bump that
-# changes the virt-launcher image is enough — a z-stream patch works, you
+# changes the virt-launcher image is enough, a z-stream patch works, you
 # do not need a full minor jump)
 ```
-Default HCO behavior (verified via the field's `+kubebuilder:default` in `hyperconverged_types.go`: `{"workloadUpdateMethods": {"LiveMigrate"}, "batchEvictionSize": 10, "batchEvictionInterval": "1m0s"}`) is `workloadUpdateMethods: [LiveMigrate]` — emptying the list is what deliberately leaves outdated VMIs running instead of auto-draining them before you ever see the alert.
+Default HCO behavior (verified via the field's `+kubebuilder:default` in `hyperconverged_types.go`: `{"workloadUpdateMethods": {"LiveMigrate"}, "batchEvictionSize": 10, "batchEvictionInterval": "1m0s"}`) is `workloadUpdateMethods: [LiveMigrate]`, emptying the list is what deliberately leaves outdated VMIs running instead of auto-draining them before you ever see the alert.
 
 **Verify (anytime before the demo):**
 ```bash
@@ -232,7 +249,7 @@ oc patch hyperconverged.v1beta1.hco.kubevirt.io kubevirt-hyperconverged -n opens
   -p '{"spec":{"workloadUpdateStrategy":{"workloadUpdateMethods":["LiveMigrate"]}}}'   # v1beta1
 # oc patch hyperconverged.v1.hco.kubevirt.io ... -p '{"spec":{"virtualization":{"workloadUpdateStrategy":{"workloadUpdateMethods":["LiveMigrate"]}}}}'   # v1
 ```
-HCO batch-migrates outdated, migratable VMIs (default `batchEvictionSize: 10` per `batchEvictionInterval: 1m`, both confirmed as the kubebuilder defaults above). Non-migratable outdated VMIs are left alone unless `Evict` is also added to the method list (`WorkloadUpdateMethodEvict = "Evict"`, a real enum value) — which restarts/shuts them off and is off by default because it's disruptive; mention this explicitly if asked how a non-migratable outdated VM ever gets updated. The alert resolves the instant the gauge returns to 0 (again, no `for` delay on resolution).
+HCO batch-migrates outdated, migratable VMIs (default `batchEvictionSize: 10` per `batchEvictionInterval: 1m`, both confirmed as the kubebuilder defaults above). Non-migratable outdated VMIs are left alone unless `Evict` is also added to the method list (`WorkloadUpdateMethodEvict = "Evict"`, a real enum value), which restarts/shuts them off and is off by default because it's disruptive; mention this explicitly if asked how a non-migratable outdated VM ever gets updated. The alert resolves the instant the gauge returns to 0 (again, no `for` delay on resolution).
 
 ### Reset
 ```bash
@@ -244,20 +261,20 @@ oc patch hyperconverged.v1beta1.hco.kubevirt.io kubevirt-hyperconverged -n opens
 
 ---
 
-## 5. Trigger recipe (c) — memory pressure: `KubeVirtVMGuestMemoryPressure`
+## 5. Trigger recipe (c), memory pressure: `KubeVirtVMGuestMemoryPressure`
 
 ### Name correction (verify-before-use, as instructed)
 
-The brief assumed an alert called `KubevirtVmHighMemoryUsage`. **That alert does not exist.** Checked against `kubevirt/kubevirt @ pkg/monitoring/rules/alerts/vms.go` and the full runbook index at `kubevirt/monitoring` — there is no runbook or alert definition by that name anywhere in either source. The two real guest-memory alerts are:
+The brief assumed an alert called `KubevirtVmHighMemoryUsage`. **That alert does not exist.** Checked against `kubevirt/kubevirt @ pkg/monitoring/rules/alerts/vms.go` and the full runbook index at `kubevirt/monitoring`, there is no runbook or alert definition by that name anywhere in either source. The two real guest-memory alerts are:
 
 | Alert | Severity | `for` | Fires when |
 |---|---|---|---|
 | **`KubeVirtVMGuestMemoryPressure`** ← use this | warning | 5m | headroom < 5% **AND** (pgmajfaults > 5/s **OR** swap traffic > 1MiB/s) |
-| `KubeVirtVMGuestMemoryAvailableLow` | info | 30m | headroom < 3% **AND** swap < 2KiB/30m **AND** pgmajfaults < 1/30m (i.e., low headroom *without* swap — a slow leak, the opposite condition of a hog under active pressure) |
+| `KubeVirtVMGuestMemoryAvailableLow` | info | 30m | headroom < 3% **AND** swap < 2KiB/30m **AND** pgmajfaults < 1/30m (i.e., low headroom *without* swap, a slow leak, the opposite condition of a hog under active pressure) |
 
-`KubeVirtVMGuestMemoryAvailableLow`'s condition is specifically the *absence* of swap/fault activity — it is the wrong alert to build a "run a memory hog" demo around, and its 30-minute `for` makes it worse for a live demo regardless. `KubeVirtVMGuestMemoryPressure` is the correct target.
+`KubeVirtVMGuestMemoryAvailableLow`'s condition is specifically the *absence* of swap/fault activity, it is the wrong alert to build a "run a memory hog" demo around, and its 30-minute `for` makes it worse for a live demo regardless. `KubeVirtVMGuestMemoryPressure` is the correct target.
 
-**Verified exact expr** (`vms.go`; the trailing `topk` join clause is abbreviated below for readability — it's a double `label_replace` on `kubevirt_vmi_info{phase='running'}`, full text in the source):
+**Verified exact expr** (`vms.go`; the trailing `topk` join clause is abbreviated below for readability, it's a double `label_replace` on `kubevirt_vmi_info{phase='running'}`, full text in the source):
 ```
 ((vmi:kubevirt_vmi_memory_headroom_ratio:sum < 0.05)
   and (vmi:kubevirt_vmi_pgmajfaults:rate5m > 5
@@ -266,9 +283,9 @@ The brief assumed an alert called `KubevirtVmHighMemoryUsage`. **That alert does
 * on(name, namespace) group_left(vm) topk by(name, namespace) (1, ...)
 ```
 
-### Prerequisite correction — this needs a 4th thing, not QGA/schedstats/psi
+### Prerequisite correction, this needs a 4th thing, not QGA/schedstats/psi
 
-The brief's hard rule flags three known prerequisites (QEMU guest agent, `schedstats=enable`, `psi=1`). **This recipe needs none of them.** Its metrics — `kubevirt_vmi_memory_available_bytes`, `_usable_bytes`, `_pgmajfault_total`, `_swap_in_traffic_bytes`, `_swap_out_traffic_bytes` — come from the **libvirt/QEMU memory-balloon device's extended stats** (`virtio_balloon` guest kernel driver, polled via libvirt), confirmed from the metric descriptions themselves (`kubevirt.io/monitoring/metrics.html`: e.g. `kubevirt_vmi_memory_usable_bytes` = *"the amount of memory which can be reclaimed by balloon..."*). None of these carry the "Requires qemu-guest-agent" note that `kubevirt_vmi_guest_load_1m/5m/15m` explicitly does. The real prerequisite: don't set `autoattachMemBalloon: false` (default is attached), and use a guest kernel with the standard `virtio_balloon` driver (default on any stock Fedora/CentOS Stream/RHEL cloud image — no install step needed).
+The brief's hard rule flags three known prerequisites (QEMU guest agent, `schedstats=enable`, `psi=1`). **This recipe needs none of them.** Its metrics, `kubevirt_vmi_memory_available_bytes`, `_usable_bytes`, `_pgmajfault_total`, `_swap_in_traffic_bytes`, `_swap_out_traffic_bytes`, come from the **libvirt/QEMU memory-balloon device's extended stats** (`virtio_balloon` guest kernel driver, polled via libvirt), confirmed from the metric descriptions themselves (`kubevirt.io/monitoring/metrics.html`: e.g. `kubevirt_vmi_memory_usable_bytes` = *"the amount of memory which can be reclaimed by balloon..."*). None of these carry the "Requires qemu-guest-agent" note that `kubevirt_vmi_guest_load_1m/5m/15m` explicitly does. The real prerequisite: don't set `autoattachMemBalloon: false` (default is attached), and use a guest kernel with the standard `virtio_balloon` driver (default on any stock Fedora/CentOS Stream/RHEL cloud image, no install step needed).
 
 ### Trigger manifest + driver
 
@@ -288,7 +305,7 @@ spec:
         cpu: { cores: 2 }
         resources:
           requests: { memory: 512Mi }
-          limits: { memory: 512Mi }     # tight ceiling — do not omit
+          limits: { memory: 512Mi }     # tight ceiling, do not omit
         devices:
           disks:
             - { name: rootdisk, disk: { bus: virtio } }
@@ -317,13 +334,13 @@ oc wait vmi/vm-memory-pressure -n demo-vms --for=jsonpath='{.status.phase}'=Runn
 # give cloud-init ~60-90s more to install stress-ng and set up swap
 NAMESPACE=demo-vms VM=vm-memory-pressure ./act2-05-memory-pressure-driver.sh
 ```
-The driver script prompts you to start `stress-ng --vm 2 --vm-bytes 90% --vm-keep --timeout 600s` via `virtctl console`, then polls `vmi:kubevirt_vmi_memory_headroom_ratio:sum`, the pgmajfault/swap rate recording rules, and the live `ALERTS{alertname="KubeVirtVMGuestMemoryPressure"}` series every 15s in a second terminal pane — so the audience watches the exact numbers the alert expr reads move in real time next to the console.
+The driver script prompts you to start `stress-ng --vm 2 --vm-bytes 90% --vm-keep --timeout 600s` via `virtctl console`, then polls `vmi:kubevirt_vmi_memory_headroom_ratio:sum`, the pgmajfault/swap rate recording rules, and the live `ALERTS{alertname="KubeVirtVMGuestMemoryPressure"}` series every 15s in a second terminal pane, so the audience watches the exact numbers the alert expr reads move in real time next to the console.
 
 **Time to fire:** ~10 minutes (5-minute rate-window warm-up for the recording rules, plus the alert's own `for: 5m`); can be faster if pressure is immediate.
 
 ### The walk
 
-Same shape as recipe (a): **Observe → Alerting → Alerts → `KubeVirtVMGuestMemoryPressure` (Firing)** → with the alert showing in the main console, **Application Launcher → Signal Correlation → Focus** → graph. `AlertToVMI` resolves cleanly here — this alert's expr does carry `name`/`namespace` labels via its own `group_left(vm)` join, unlike recipe (b). Expect the same VMI → Pod → Node → Logs → Metric shape as recipe (a).
+Same shape as recipe (a), with the same corrected console reality (see recipe (a)'s §3, steps 2-3): **Observe → Alerting → Alerts** (Project set to All Projects) **→ `KubeVirtVMGuestMemoryPressure` (Firing)**. This alert's own expr does carry `name`/`namespace` labels via its `group_left(vm)` join, which satisfies `AlertToVMI`'s label requirement, unlike recipe (b), but on this cluster's actual korrel8r (0.11.1), `AlertToVMI` itself is missing, so Focus on the alert still won't reach the VMI (confirmed in §2). Use the same query-editor workaround as recipe (a): type `k8s:VirtualMachineInstance.v1.kubevirt.io:{"namespace":"demo-vms","name":"vm-memory-pressure"}` directly into the panel. From there, expect the same VMI → Pod → Node → Logs → Metric shape as recipe (a).
 
 ### Reset
 
@@ -334,31 +351,31 @@ oc delete vm vm-memory-pressure -n demo-vms
 
 ---
 
-## 6. Expected node-graph contents — reference
+## 6. Expected node-graph contents, reference
 
-**Full verified rule list relevant to this walk** (`korrel8r/korrel8r @ pkg/rules/quickrules/kubevirt.qtpl` + `alert.qtpl`):
+**Full verified rule list relevant to this walk** (`korrel8r/korrel8r @ pkg/rules/quickrules/kubevirt.qtpl` + `alert.qtpl`). This is the upstream rule set in general, not a guarantee for any one pinned image: on this cluster's actual korrel8r (0.11.1), only `VmToVmi`, `VmiToPod`, `VmiToNode`, and `VmToPVC` from the KubeVirt-specific rows below are confirmed present, alongside generic `PodToLogs`, `PodToAlert`, `PodToNode`, `K8sSrcToNetflow`, and `AllToMetric`; `AlertToVM`, `AlertToVMI`, `VmToAlert`, `VmiToAlert`, and `VmiToLogs` are confirmed missing and need korrel8r 0.11.4 or later (see §2 for the live verification output).
 
 | Rule | Start → Goal | Notes |
 |---|---|---|
-| `AlertToVM` / `AlertToVMI` | `alert` → `VirtualMachine`/`VirtualMachineInstance` | Requires alert labels `namespace` **and** `name` — see recipe (b)'s caveat |
+| `AlertToVM` / `AlertToVMI` | `alert` → `VirtualMachine`/`VirtualMachineInstance` | Requires alert labels `namespace` **and** `name`, see recipe (b)'s caveat |
 | `AlertToVmim` | `alert` → `VirtualMachineInstanceMigration` | Requires alert labels `namespace` + `vmim` |
 | `VmToVmi` | `VirtualMachine` → `VirtualMachineInstance` | Direct namespace/name match |
-| `VmiToPod` | `VirtualMachineInstance` → `Pod` | **Label match** `kubevirt.io=virt-launcher`, `vm.kubevirt.io/name=<vmi>` — confirmed no ownerReference exists; this is the rule that makes the walk possible at all |
+| `VmiToPod` | `VirtualMachineInstance` → `Pod` | **Label match** `kubevirt.io=virt-launcher`, `vm.kubevirt.io/name=<vmi>`, confirmed no ownerReference exists; this is the rule that makes the walk possible at all |
 | `VmiToNode` | `VirtualMachineInstance` → `Node` | From `.status.nodeName` |
 | `VmToAlert` / `VmiToAlert` / `VmimToAlert` | reverse of the above | For navigating VM→alert |
 | `VmToPVC` / `VmiToPVC` | → `PersistentVolumeClaim` | Covers `dataVolumeTemplates`, `persistentVolumeClaim`, `dataVolume`, `ephemeral`, `memoryDump` volume types |
-| `VmiToLogs` | `VirtualMachineInstance` → `log` domain | Same label match as `VmiToPod`, targets Loki `application` or `infrastructure` tenant via `logTypeForNamespace()` (infra only for `default`/`openshift*`/`kube*` namespaces — any normal demo namespace resolves to `application`) |
+| `VmiToLogs` | `VirtualMachineInstance` → `log` domain | Same label match as `VmiToPod`, targets Loki `application` or `infrastructure` tenant via `logTypeForNamespace()` (infra only for `default`/`openshift*`/`kube*` namespaces, any normal demo namespace resolves to `application`) |
 | `VmToMetric` / `VmiToMetric` | → `metric` domain | `metric:metric:{namespace=...,name=...}` |
-| `NodeToVmi` | `Node` → `VirtualMachineInstance` | Via `kubevirt.io/nodeName` label — useful for "what else is on this node" |
+| `NodeToVmi` | `Node` → `VirtualMachineInstance` | Via `kubevirt.io/nodeName` label, useful for "what else is on this node" |
 | `VmimToVmi` / `VmiToVmim` | migration ↔ VMI | For the migration-beat crossover with Act 1 |
-| `K8sSrcToNetflow` / `K8sDstToNetflow` | `Node`/`Pod`/`Service` → `netflow` | Generic k8s rules (not KubeVirt-specific), verified in `pkg/rules/quickrules/k8s.qtpl` — this is how a virt-launcher Pod node reaches netflow; netflow-domain rules only run in the reverse direction |
+| `K8sSrcToNetflow` / `K8sDstToNetflow` | `Node`/`Pod`/`Service` → `netflow` | Generic k8s rules (not KubeVirt-specific), verified in `pkg/rules/quickrules/k8s.qtpl`, this is how a virt-launcher Pod node reaches netflow; netflow-domain rules only run in the reverse direction |
 
 **Domains and what backs them** (verified, COO's generated korrel8r config template):
 
 | Domain | Store | Requires |
 |---|---|---|
 | `k8s` | live API server | nothing extra |
-| `alert` | Thanos-querier + Alertmanager (`openshift-monitoring`) | nothing extra — always available |
+| `alert` | Thanos-querier + Alertmanager (`openshift-monitoring`) | nothing extra, always available |
 | `metric` | Thanos-querier | nothing extra |
 | `log` | LokiStack gateway, expected in `openshift-logging` | **Logging Operator + LokiStack CR**, in that namespace |
 | `netflow` | LokiStack gateway, expected in `netobserv` namespace | **Network Observability operator + its own LokiStack**, in that namespace |
@@ -366,9 +383,9 @@ oc delete vm vm-memory-pressure -n demo-vms
 
 ### What silently does NOT render if a plugin/store is missing
 
-This is not hypothetical — I verified it from the operator's own config-generation code (`pkg/controllers/uiplugin/components.go`, `newKorrel8rConfigMap`): the store URL for `log`/`netflow`/`trace` is written into the korrel8r config from a real live lookup (`getLokiServiceName`/`getTempoServiceName` actually list Services in the target namespace looking for the LokiStack/Tempo gateway), but if that lookup finds nothing, the config falls back to a guessed default service name (`logging-loki-gateway-http`, `loki-gateway-http`, `tempo-platform-gateway`) **regardless of whether that service actually exists**. If LokiStack isn't installed in `openshift-logging`, korrel8r's `log` store ends up pointing at a Service that isn't there — any query to it fails (connection error) inside the korrel8r pod. **The graph does not show an error node for this.** It simply omits the log node — one fewer branch on the VMI, no visible indication anything is missing, unless you go check the korrel8r pod's own logs. Same mechanism, same silence, for `netflow` without Network Observability + its LokiStack.
+This is not hypothetical, I verified it from the operator's own config-generation code (`pkg/controllers/uiplugin/components.go`, `newKorrel8rConfigMap`): the store URL for `log`/`netflow`/`trace` is written into the korrel8r config from a real live lookup (`getLokiServiceName`/`getTempoServiceName` actually list Services in the target namespace looking for the LokiStack/Tempo gateway), but if that lookup finds nothing, the config falls back to a guessed default service name (`logging-loki-gateway-http`, `loki-gateway-http`, `tempo-platform-gateway`) **regardless of whether that service actually exists**. If LokiStack isn't installed in `openshift-logging`, korrel8r's `log` store ends up pointing at a Service that isn't there, any query to it fails (connection error) inside the korrel8r pod. **The graph does not show an error node for this.** It simply omits the log node, one fewer branch on the VMI, no visible indication anything is missing, unless you go check the korrel8r pod's own logs. Same mechanism, same silence, for `netflow` without Network Observability + its LokiStack.
 
-**Practical implication for this act:** if you're demoing the log/netflow branches (which you should be, per the brief), confirm both are actually installed and their LokiStack pods are Ready *before* you're on stage — `preflight.sh` §7 already checks the CRDs exist; also confirm the LokiStack pods themselves are running (`oc get pods -n openshift-logging`, `oc get pods -n netobserv`), since a CRD existing doesn't mean the stack is healthy.
+**Practical implication for this act:** if you're demoing the log/netflow branches (which you should be, per the brief), confirm both are actually installed and their LokiStack pods are Ready *before* you're on stage, `preflight.sh` §7 already checks the CRDs exist; also confirm the LokiStack pods themselves are running (`oc get pods -n openshift-logging`, `oc get pods -n netobserv`), since a CRD existing doesn't mean the stack is healthy.
 
 ---
 
@@ -382,13 +399,13 @@ Run `act2-07-reset.sh` (env vars `NAMESPACE`, `HCO_NS`, `HCO_NAME`, all defaulte
 
 All under `/tmp/claude-1000/-home-anaeem-virt-monitorong/2f0da83a-3cef-49d6-93d9-35e42bb17a53/scratchpad/demo/`:
 
-- `act2-01-korrel8r-verify.sh` — mandatory pre-demo korrel8r KubeVirt-rule check (CLI + REST)
-- `act2-02-recipe-a-vmcannotbeevicted.yaml` — deterministic non-migratable VM trigger
-- `act2-03-recipe-b-outdated-workloads.sh` — HCO patch / upgrade / verify / drain flow for the outdated-workloads alert
-- `act2-04-recipe-c-memory-pressure-vm.yaml` — tight-memory VM with guest swap via cloud-init
-- `act2-05-memory-pressure-driver.sh` — live-demo companion that polls the alert's own recording rules
-- `act2-06-korrel8r-custom-rule-fallback.yaml` — unsupported custom-rule fallback (real upstream YAML syntax, honest caveats)
-- `act2-07-reset.sh` — one-pass reset for all three recipes
+- `act2-01-korrel8r-verify.sh`, mandatory pre-demo korrel8r KubeVirt-rule check (CLI + REST)
+- `act2-02-recipe-a-vmcannotbeevicted.yaml`, deterministic non-migratable VM trigger
+- `act2-03-recipe-b-outdated-workloads.sh`, HCO patch / upgrade / verify / drain flow for the outdated-workloads alert
+- `act2-04-recipe-c-memory-pressure-vm.yaml`, tight-memory VM with guest swap via cloud-init
+- `act2-05-memory-pressure-driver.sh`, live-demo companion that polls the alert's own recording rules
+- `act2-06-korrel8r-custom-rule-fallback.yaml`, unsupported custom-rule fallback (real upstream YAML syntax, honest caveats)
+- `act2-07-reset.sh`, one-pass reset for all three recipes
 
 All seven files were confirmed to exist on disk and to parse cleanly (YAML via `python3 -c "import yaml; yaml.safe_load_all(...)"`, bash via `bash -n`) both before and after the `operator_health_impact` label-key fix described above.
 
@@ -396,11 +413,11 @@ All seven files were confirmed to exist on disk and to parse cleanly (YAML via `
 
 ## Open questions only your live cluster can answer
 
-1. **Does your COO build's pinned korrel8r image actually contain the KubeVirt rules?** This is the single largest risk to this entire act working as written — §2 exists specifically because I could not check this without cluster access. Run `act2-01-korrel8r-verify.sh` days before the demo, not hours before.
+1. **Does your COO build's pinned korrel8r image actually contain the KubeVirt rules?** Answered on this specific cluster: 0.11.1, 4 of 8 relevant KubeVirt rules present, `AlertToVMI`/`VmToAlert`/`VmiToAlert`/`VmiToLogs` missing (see §2). This remains the single largest risk on any *other* cluster this act runs on, run `act2-01-korrel8r-verify.sh` days before the demo, not hours before, and don't assume a different cluster matches this one.
 2. **What are your default/available StorageClasses' access modes?** Recipe (a) forces `ReadWriteOnce` explicitly so it works regardless, but confirm the DataVolume actually binds (some CSI drivers reject `ReadWriteOnce` + `Block` combinations, or need a different `volumeMode`).
-3. **Is `autoattachMemBalloon` disabled anywhere in your cluster's default VM template/instancetype?** If your demo VMs are built from a customized golden image or instancetype that turns the balloon device off, recipe (c)'s entire metric chain goes silently empty — check `oc get vm <name> -o jsonpath='{.spec.template.spec.domain.devices.autoattachMemBalloon}'` on whatever base template you actually use.
-4. **Which namespace is LokiStack (logging) and Network Observability's LokiStack actually installed in?** The korrel8r config assumes `openshift-logging` and `netobserv` respectively (verified from source) — if your cluster used different namespaces, the `log`/`netflow` domains will silently fail to resolve even though both operators are technically installed. Confirm namespace names match before relying on §6's table.
-5. **Exact default value of the Troubleshooting Panel's "Distance" advanced-settings control** — confirmed from docs.redhat.com that this control exists and is described as "the maximum number of steps" the correlation search takes from the starting point, and that it's user-adjustable in the panel's Advanced settings, but the documentation does not state a numeric default and I could not confirm one from source in the time available. If the VMI→Pod→Logs chain doesn't fully render at the default, increase Distance manually.
+3. **Is `autoattachMemBalloon` disabled anywhere in your cluster's default VM template/instancetype?** If your demo VMs are built from a customized golden image or instancetype that turns the balloon device off, recipe (c)'s entire metric chain goes silently empty, check `oc get vm <name> -o jsonpath='{.spec.template.spec.domain.devices.autoattachMemBalloon}'` on whatever base template you actually use.
+4. **Which namespace is LokiStack (logging) and Network Observability's LokiStack actually installed in?** The korrel8r config assumes `openshift-logging` and `netobserv` respectively (verified from source), if your cluster used different namespaces, the `log`/`netflow` domains will silently fail to resolve even though both operators are technically installed. Confirm namespace names match before relying on §6's table.
+5. **Exact default value of the Troubleshooting Panel's "Distance" advanced-settings control**, confirmed from docs.redhat.com that this control exists and is described as "the maximum number of steps" the correlation search takes from the starting point, and that it's user-adjustable in the panel's Advanced settings, but the documentation does not state a numeric default and I could not confirm one from source in the time available. If the VMI→Pod→Logs chain doesn't fully render at the default, increase Distance manually.
 
 
 
@@ -565,14 +582,19 @@ Stage/verify/drain flow for OutdatedVirtualMachineInstanceWorkloads (severity wa
 #
 # *** READ THIS BEFORE YOU BUILD A DEMO AROUND THIS ALERT ***
 #
-# 1) THE 24-HOUR FOR-DURATION IS REAL AND CANNOT BE DEMOED LIVE IN ONE
-#    SITTING. The underlying gauge (kubevirt_vmi_number_of_outdated) goes
-#    nonzero within a couple of scrape intervals of the upgrade completing
-#    with an outdated VMI still running -- the alert enters Pending state
-#    almost immediately -- but it will not transition to Firing until 24
-#    real hours later. You MUST pre-stage this at least 24h before you're on
-#    stage: run steps 1-3 below the day before, leave workloadUpdateMethods
-#    empty, and let it sit. On demo day it will already be Firing.
+# 1) THE 24-HOUR FOR-DURATION IS REAL, AND CONFIRMED LIVE, PRE-STAGING 24H
+#    AHEAD IS NOT ACTUALLY ENOUGH ON A CLUSTER WHERE VIRT-CONTROLLER IS
+#    CRASH-LOOPING. The underlying gauge (kubevirt_vmi_number_of_outdated)
+#    goes nonzero within a couple of scrape intervals of the upgrade
+#    completing with an outdated VMI still running -- the alert enters
+#    Pending state almost immediately. On this cluster it has sat in
+#    Pending for at least 7 days straight: both virt-controller replicas
+#    restart on leader-election lease-renewal failures (106 and 105
+#    restarts each over 7 days), and every restart resets the alert's 24h
+#    pending timer (36 resets counted in 7 days). Run steps 1-3 below the
+#    day before as good practice, but do not promise Firing on a fixed
+#    schedule -- demo the gauge and the labeled VMI list instead (step 4
+#    below), not the alert reaching Firing.
 #
 # 2) THIS METRIC HAS NO PER-VM LABELS -- THE WALK IN THE TROUBLESHOOTING
 #    PANEL WILL NOT RESOLVE A VMI FROM THIS ALERT.
@@ -659,9 +681,12 @@ case "$CMD" in
     oc get vmi -A -l kubevirt.io/outdatedLauncherImage
     echo
     echo "== Alert state (Observe > Alerting, or via Thanos-querier / Alertmanager API) =="
-    echo "   Console path: Observe > Alerting > Alerts, filter Alert = OutdatedVirtualMachineInstanceWorkloads"
-    echo "   State will read Pending until 24h after the metric first went nonzero,"
-    echo "   then Firing. This is expected -- see the header comment."
+    echo "   Console path: Observe > Alerting > Alerts (set Project to All Projects first),"
+    echo "   filter Alert = OutdatedVirtualMachineInstanceWorkloads"
+    echo "   State reads Pending once the metric goes nonzero. On a cluster where"
+    echo "   virt-controller is stable it reaches Firing 24h later; on this cluster"
+    echo "   it has stayed Pending for a week because virt-controller restarts reset"
+    echo "   the timer every 4-5 hours -- see the header comment. Don't wait for Firing."
     ;;
 
   drain)

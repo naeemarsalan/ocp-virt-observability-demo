@@ -1,0 +1,18 @@
+--- vm-demo ---
+Ready=True reason= msg=
+DataVolumesReady=True reason=AllDVsReady msg=All of the VMI's DVs are bound and ready
+LiveMigratable=True reason= msg=
+StorageLiveMigratable=True reason= msg=
+AgentConnected=True reason= msg=
+--- vm-demo-2 ---
+Ready=True reason= msg=
+DataVolumesReady=True reason=AllDVsReady msg=All of the VMI's DVs are bound and ready
+LiveMigratable=True reason= msg=
+StorageLiveMigratable=True reason= msg=
+AgentConnected=True reason= msg=
+--- vm-non-migratable ---
+Ready=True reason= msg=
+DataVolumesReady=True reason=AllDVsReady msg=All of the VMI's DVs are bound and ready
+LiveMigratable=False reason=DisksNotLiveMigratable msg=cannot migrate VMI: PVC vm-non-migratable-disk is not shared, live migration requires that all PVCs must be shared (using ReadWriteMany access mode)
+StorageLiveMigratable=True reason= msg=
+AgentConnected=True reason= msg=

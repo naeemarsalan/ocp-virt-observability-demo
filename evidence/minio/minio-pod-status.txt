@@ -1,0 +1,2 @@
+NAME                     READY   STATUS    RESTARTS   AGE     IP             NODE                NOMINATED NODE   READINESS GATES
+minio-85955fbf95-qj6g8   1/1     Running   0          2m50s   10.129.1.227   80-18-44-f0-71-30   <none>           <none>

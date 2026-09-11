@@ -1,0 +1,3 @@
+NAME                               READY   STATUS    RESTARTS          AGE   IP             NODE                NOMINATED NODE   READINESS GATES
+virt-controller-7b86885b64-p4m8c   1/1     Running   106 (2m31s ago)   30d   10.130.0.132   24-6e-96-33-24-90   <none>           <none>
+virt-controller-7b86885b64-zxd9s   1/1     Running   105 (24m ago)     30d   10.128.0.85    ec-f4-bb-ed-07-a8   <none>           <none>

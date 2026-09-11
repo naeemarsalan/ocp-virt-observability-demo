@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"create_goals_graph","arguments":{"start":{"queries":["alert:alert:{\"alertname\":\"VMCannotBeEvicted\",\"namespace\":\"demo-vms\",\"name\":\"vm-non-migratable\"}"]},"goals":["k8s:VirtualMachineInstance.v1.kubevirt.io","k8s:Pod.v1","log:application","metric:metric"]}}}
